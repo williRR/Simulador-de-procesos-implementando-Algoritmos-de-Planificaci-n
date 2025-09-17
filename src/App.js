@@ -3,9 +3,9 @@ import FormularioProceso from './components/FormularioProceso';
 import SelectorAlgoritmo from './components/SelectorAlgoritmo';
 import ColaProcesos from './components/ColaProcesos';
 import HistorialProcesos from './components/HistorialProcesos';
-import ControlSimulacion from './components/ControlSimulacion'; // Corrected import name
+import ControlSimulacion from './components/ControlSimulacion';
 
-const TIME_UNIT_MS = 5000; // 5 segundos
+const TIME_UNIT_MS = 3000; // 1 segundo por unidad de tiempo
 
 function App() {
   const [processes, setProcesses] = useState([]);
@@ -20,103 +20,122 @@ function App() {
   const addProcess = (newProcess) => {
     setProcesses((prevProcesses) => [
       ...prevProcesses,
-      { ...newProcess, pid: pidCounter, quantumCount: 0, remainingTime: newProcess.cpuTime },
+      {
+        ...newProcess,
+        pid: pidCounter,
+        quantumCount: 0,
+        remainingTime: Number(newProcess.cpuTime),
+        cpuTime: Number(newProcess.cpuTime),
+        arrivalTime: Number(newProcess.arrivalTime),
+        quantum: newProcess.quantum ? Number(newProcess.quantum) : 2,
+        startTime: -1, // -1 indica que aún no ha iniciado
+      },
     ]);
     setPidCounter((prevCounter) => prevCounter + 1);
   };
 
-  // Main simulation loop
+  // Bucle principal de la simulación (controla el tiempo)
   useEffect(() => {
     if (!isRunning) return;
-
     const interval = setInterval(() => {
       setCurrentTime((prevTime) => prevTime + 1);
     }, TIME_UNIT_MS);
-
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  // Logic for scheduling and execution
+  // Lógica de planificación y ejecución (se ejecuta en cada unidad de tiempo)
   useEffect(() => {
-    // 1. Check for new arrivals at the current time
+    if (!isRunning) return;
+
+    let newCurrentProcess = currentProcess ? { ...currentProcess } : null;
+    let newQueue = [...queue];
+    let newHistory = [...history];
+
+    // 1. Mover nuevos procesos a la cola
     const newArrivals = processes.filter((p) => p.arrivalTime === currentTime);
     if (newArrivals.length > 0) {
-      setQueue((prevQueue) => [...prevQueue, ...newArrivals]);
+      newQueue = [...newQueue, ...newArrivals];
       setProcesses((prevProcesses) => prevProcesses.filter((p) => p.arrivalTime !== currentTime));
     }
 
-    // 2. Main scheduling and execution logic
-    if (isRunning) {
-      // Logic for preemption and process completion
-      let nextProcess = null;
-      let updatedQueue = [...queue];
-
-      // Handle process completion or preemption first
-      if (currentProcess) {
-        if (currentProcess.remainingTime <= 0) {
-          setHistory((prevHistory) => [
-            ...prevHistory,
-            { ...currentProcess, finishTime: currentTime, waitingTime: currentTime - currentProcess.arrivalTime - currentProcess.cpuTime },
-          ]);
-          nextProcess = null;
-        } else if (selectedAlgorithm === 'RoundRobin' && currentProcess.quantumCount >= currentProcess.quantum) {
-          // Preempt for Round Robin
-          updatedQueue.push({ ...currentProcess, quantumCount: 0 }); // Reset quantum and add to end of queue
-          nextProcess = null;
-        } else if (selectedAlgorithm === 'SRTF') {
-          // Check for a new process with a shorter remaining time
-          const shortestInQueue = updatedQueue.sort((a, b) => a.remainingTime - b.remainingTime)[0];
-          if (shortestInQueue && shortestInQueue.remainingTime < currentProcess.remainingTime) {
-            updatedQueue.push(currentProcess);
-            nextProcess = null;
-          } else {
-            nextProcess = currentProcess;
-          }
-        } else {
-          // For FCFS and SJF, the process runs until completion
-          nextProcess = currentProcess;
-        }
+    // 2. Ejecutar el proceso actual
+    if (newCurrentProcess) {
+      newCurrentProcess.remainingTime--;
+      if (selectedAlgorithm === 'RoundRobin') {
+        newCurrentProcess.quantumCount++;
       }
-
-      // If no process is running or a new one needs to be selected
-      if (!nextProcess && updatedQueue.length > 0) {
-        switch (selectedAlgorithm) {
-          case 'FCFS':
-            nextProcess = updatedQueue.shift();
-            break;
-          case 'SJF':
-          case 'SRTF':
-            updatedQueue.sort((a, b) => a.remainingTime - b.remainingTime);
-            nextProcess = updatedQueue.shift();
-            break;
-          case 'RoundRobin':
-            nextProcess = updatedQueue.shift();
-            break;
-          default:
-            nextProcess = updatedQueue.shift();
-            break;
-        }
-      }
-
-      // Update state for the next time unit
-      if (nextProcess) {
-        setCurrentProcess({
-          ...nextProcess,
-          remainingTime: nextProcess.remainingTime - 1,
-          quantumCount: nextProcess.quantumCount + 1,
-        });
-      } else {
-        setCurrentProcess(null); // No process to run
-      }
-      setQueue(updatedQueue);
     }
-  }, [currentTime, isRunning, processes, queue, currentProcess, selectedAlgorithm]);
+
+    // 3. Lógica de finalización y expropiación
+    if (newCurrentProcess && newCurrentProcess.remainingTime <= 0) {
+      const finishTime = currentTime;
+      const turnaroundTime = finishTime - newCurrentProcess.arrivalTime;
+      const waitingTime = turnaroundTime - newCurrentProcess.cpuTime;
+
+      newHistory.push({
+        ...newCurrentProcess,
+        finishTime: finishTime,
+        turnaroundTime: turnaroundTime,
+        waitingTime: waitingTime,
+      });
+      newCurrentProcess = null;
+    } else if (newCurrentProcess && selectedAlgorithm === 'RoundRobin' && newCurrentProcess.quantumCount >= newCurrentProcess.quantum) {
+      newQueue.push({ ...newCurrentProcess, quantumCount: 0 });
+      newCurrentProcess = null;
+    } else if (newCurrentProcess && selectedAlgorithm === 'SRTF') {
+      const shortestInQueue = newQueue.length > 0 ? [...newQueue].sort((a, b) => a.remainingTime - b.remainingTime)[0] : null;
+      if (shortestInQueue && shortestInQueue.remainingTime < newCurrentProcess.remainingTime) {
+        newQueue.push(newCurrentProcess);
+        newCurrentProcess = null;
+      }
+    }
+
+    // 4. Elegir el siguiente proceso si la CPU está libre
+    if (!newCurrentProcess && newQueue.length > 0) {
+      switch (selectedAlgorithm) {
+        case 'FCFS':
+        case 'RoundRobin':
+          newCurrentProcess = newQueue.shift();
+          break;
+        case 'SJF':
+          newQueue.sort((a, b) => a.cpuTime - b.cpuTime);
+          newCurrentProcess = newQueue.shift();
+          break;
+        case 'SRTF':
+          newQueue.sort((a, b) => a.remainingTime - b.remainingTime);
+          newCurrentProcess = newQueue.shift();
+          break;
+        default:
+          newCurrentProcess = newQueue.shift();
+          break;
+      }
+      if (newCurrentProcess && newCurrentProcess.startTime === -1) {
+        newCurrentProcess.startTime = currentTime;
+      }
+    }
+
+    // 5. Actualizar el estado
+    setCurrentProcess(newCurrentProcess);
+    setQueue(newQueue);
+    setHistory(newHistory);
+
+  }, [currentTime, isRunning, processes, selectedAlgorithm , currentProcess, queue, history]);
 
   const handleStartSimulation = () => {
     setIsRunning(true);
   };
 
   const handleStopSimulation = () => {
+    setIsRunning(false);
+  };
+
+  const handleCleanHistory = () => {
+    setHistory([]);
+    setCurrentTime(0);
+    setProcesses([]);
+    setQueue([]);
+    setCurrentProcess(null);
+    setPidCounter(1);
     setIsRunning(false);
   };
 
@@ -131,7 +150,12 @@ function App() {
       <div className="controls-section">
         <FormularioProceso addProcess={addProcess} />
         <SelectorAlgoritmo onSelectAlgorithm={handleSelectAlgorithm} selectedAlgorithm={selectedAlgorithm} />
-        <ControlSimulacion onStart={handleStartSimulation} onStop={handleStopSimulation} isRunning={isRunning} />
+        <ControlSimulacion
+          iniciarSimulacion={handleStartSimulation}
+          detenerSimulacion={handleStopSimulation}
+          limpiarHistorial={handleCleanHistory}
+          isRunning={isRunning}
+        />
       </div>
       <div className="simulation-status-section">
         <p>Tiempo actual: {currentTime} unidad(es)</p>

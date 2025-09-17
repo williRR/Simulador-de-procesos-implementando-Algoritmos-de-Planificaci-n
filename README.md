@@ -7,7 +7,7 @@
 Abre tu terminal y ejecuta el siguiente comando para clonar el proyecto:
 
 ```bash
-git clone https://github.com/williRR/Simulador-de-procesos-implementando-Algoritmos-de-Planificaci-n
+git clone https://github.com/williRR/Simulador-de-procesos-implementando-Algoritmos-de-Planificaci-n.git
 
 ```
 ### 2. Instalar dependencias

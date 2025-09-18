@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import ProcessForm from './components/FormularioProceso';
-import AlgorithmSelector from './components/SelectorAlgoritmo';
-import ProcessQueue from './components/ColaProcesos';
-import ProcessHistory from './components/HistorialProcesos';
-import SimulationControls from './components/SimulationControls';
+import FormularioProceso from './components/FormularioProceso';
+import SelectorAlgoritmo from './components/SelectorAlgoritmo';
+import ColaProcesos from './components/ColaProcesos';
+import HistorialProcesos from './components/HistorialProcesos';
+import ControlSimulacion from './components/ControlSimulacion';
 
-const UNIDAD_TIEMPO_MS = 5000; // 5 segundos
+const TIME_UNIT_MS = 3000; // 1 segundo por unidad de tiempo
 
 function App() {
   const [processes, setProcesses] = useState([]);
@@ -17,98 +17,151 @@ function App() {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('FCFS');
   const [pidCounter, setPidCounter] = useState(1);
 
-  // Lógica para agregar un proceso
   const addProcess = (newProcess) => {
-    setProcesses((prevProcesses) => [...prevProcesses, { ...newProcess, pid: pidCounter }]);
+    setProcesses((prevProcesses) => [
+      ...prevProcesses,
+      {
+        ...newProcess,
+        pid: pidCounter,
+        quantumCount: 0,
+        remainingTime: Number(newProcess.cpuTime),
+        cpuTime: Number(newProcess.cpuTime),
+        arrivalTime: Number(newProcess.arrivalTime),
+        quantum: newProcess.quantum ? Number(newProcess.quantum) : 2,
+        startTime: -1, // -1 indica que aún no ha iniciado
+      },
+    ]);
     setPidCounter((prevCounter) => prevCounter + 1);
   };
 
-  // Lógica de simulación
+  // Bucle principal de la simulación (controla el tiempo)
   useEffect(() => {
     if (!isRunning) return;
-
     const interval = setInterval(() => {
       setCurrentTime((prevTime) => prevTime + 1);
     }, TIME_UNIT_MS);
-
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  // Lógica para gestionar la llegada de procesos y la cola
+  // Lógica de planificación y ejecución (se ejecuta en cada unidad de tiempo)
   useEffect(() => {
-    // Mover procesos de `processes` a `queue` cuando llega su instante
-    const newArrivals = processes.filter(p => p.arrivalTime === currentTime);
+    if (!isRunning) return;
+
+    let newCurrentProcess = currentProcess ? { ...currentProcess } : null;
+    let newQueue = [...queue];
+    let newHistory = [...history];
+
+    // 1. Mover nuevos procesos a la cola
+    const newArrivals = processes.filter((p) => p.arrivalTime === currentTime);
     if (newArrivals.length > 0) {
-      setQueue(prevQueue => [...prevQueue, ...newArrivals]);
-      setProcesses(prevProcesses => prevProcesses.filter(p => p.arrivalTime !== currentTime));
+      newQueue = [...newQueue, ...newArrivals];
+      setProcesses((prevProcesses) => prevProcesses.filter((p) => p.arrivalTime !== currentTime));
     }
 
-    // Lógica del planificador
-    if (!currentProcess && queue.length > 0) {
-      let nextProcess;
+    // 2. Ejecutar el proceso actual
+    if (newCurrentProcess) {
+      newCurrentProcess.remainingTime--;
+      if (selectedAlgorithm === 'RoundRobin') {
+        newCurrentProcess.quantumCount++;
+      }
+    }
+
+    // 3. Lógica de finalización y expropiación
+    if (newCurrentProcess && newCurrentProcess.remainingTime <= 0) {
+      const finishTime = currentTime;
+      const turnaroundTime = finishTime - newCurrentProcess.arrivalTime;
+      const waitingTime = turnaroundTime - newCurrentProcess.cpuTime;
+
+      newHistory.push({
+        ...newCurrentProcess,
+        finishTime: finishTime,
+        turnaroundTime: turnaroundTime,
+        waitingTime: waitingTime,
+      });
+      newCurrentProcess = null;
+    } else if (newCurrentProcess && selectedAlgorithm === 'RoundRobin' && newCurrentProcess.quantumCount >= newCurrentProcess.quantum) {
+      newQueue.push({ ...newCurrentProcess, quantumCount: 0 });
+      newCurrentProcess = null;
+    } else if (newCurrentProcess && selectedAlgorithm === 'SRTF') {
+      const shortestInQueue = newQueue.length > 0 ? [...newQueue].sort((a, b) => a.remainingTime - b.remainingTime)[0] : null;
+      if (shortestInQueue && shortestInQueue.remainingTime < newCurrentProcess.remainingTime) {
+        newQueue.push(newCurrentProcess);
+        newCurrentProcess = null;
+      }
+    }
+
+    // 4. Elegir el siguiente proceso si la CPU está libre
+    if (!newCurrentProcess && newQueue.length > 0) {
       switch (selectedAlgorithm) {
         case 'FCFS':
-          // FCFS: Elige el primero que llegó
-          nextProcess = queue[0];
-          setQueue(prevQueue => prevQueue.slice(1));
+        case 'RoundRobin':
+          newCurrentProcess = newQueue.shift();
           break;
-        // Agrega aquí la lógica para SJF, SRTF, Round Robin
         case 'SJF':
-          // SJF: Elige el proceso con el tiempo de CPU más corto
-          const sortedSJF = [...queue].sort((a, b) => a.cpuTime - b.cpuTime);
-          nextProcess = sortedSJF[0];
-          setQueue(prevQueue => prevQueue.filter(p => p.pid !== nextProcess.pid));
+          newQueue.sort((a, b) => a.cpuTime - b.cpuTime);
+          newCurrentProcess = newQueue.shift();
           break;
         case 'SRTF':
-          // SRTF: Similar a SJF, pero expropiativo
-          // Implementación más compleja, requiere chequear si hay un proceso con menor tiempo restante
-          break;
-        case 'RoundRobin':
-          // Round Robin: Elige el primero, si no termina lo devuelve al final de la cola
+          newQueue.sort((a, b) => a.remainingTime - b.remainingTime);
+          newCurrentProcess = newQueue.shift();
           break;
         default:
-          nextProcess = queue[0];
-          setQueue(prevQueue => prevQueue.slice(1));
+          newCurrentProcess = newQueue.shift();
           break;
       }
-      setCurrentProcess(nextProcess);
-    }
-
-    // Lógica para la ejecución del proceso actual
-    if (currentProcess) {
-      if (currentProcess.remainingTime > 0) {
-        // Reducir el tiempo restante
-        setCurrentProcess(prev => ({ ...prev, remainingTime: prev.remainingTime - 1 }));
-      } else {
-        // Proceso terminado
-        setHistory(prevHistory => [...prevHistory, { ...currentProcess, finishTime: currentTime }]);
-        setCurrentProcess(null);
+      if (newCurrentProcess && newCurrentProcess.startTime === -1) {
+        newCurrentProcess.startTime = currentTime;
       }
     }
 
-  }, [currentTime, isRunning, processes, queue, currentProcess, selectedAlgorithm]);
+    // 5. Actualizar el estado
+    setCurrentProcess(newCurrentProcess);
+    setQueue(newQueue);
+    setHistory(newHistory);
+
+  }, [currentTime, isRunning, processes, selectedAlgorithm , currentProcess, queue, history]);
 
   const handleStartSimulation = () => {
     setIsRunning(true);
   };
 
+  const handleStopSimulation = () => {
+    setIsRunning(false);
+  };
+
+  const handleCleanHistory = () => {
+    setHistory([]);
+    setCurrentTime(0);
+    setProcesses([]);
+    setQueue([]);
+    setCurrentProcess(null);
+    setPidCounter(1);
+    setIsRunning(false);
+  };
+
   const handleSelectAlgorithm = (algo) => {
     setSelectedAlgorithm(algo);
+    setIsRunning(false);
   };
 
   return (
     <div className="app-container">
       <h1>Simulador de Planificación de Procesos</h1>
       <div className="controls-section">
-        <ProcessForm addProcess={addProcess} />
-        <AlgorithmSelector onSelectAlgorithm={handleSelectAlgorithm} selectedAlgorithm={selectedAlgorithm} />
-        <SimulationControls onStart={handleStartSimulation} isRunning={isRunning} />
+        <FormularioProceso addProcess={addProcess} />
+        <SelectorAlgoritmo onSelectAlgorithm={handleSelectAlgorithm} selectedAlgorithm={selectedAlgorithm} />
+        <ControlSimulacion
+          iniciarSimulacion={handleStartSimulation}
+          detenerSimulacion={handleStopSimulation}
+          limpiarHistorial={handleCleanHistory}
+          isRunning={isRunning}
+        />
       </div>
       <div className="simulation-status-section">
         <p>Tiempo actual: {currentTime} unidad(es)</p>
-        <p>Proceso en CPU: {currentProcess ? currentProcess.name : 'Ninguno'}</p>
-        <ProcessQueue queue={queue} />
-        <ProcessHistory history={history} />
+        <p>Proceso en CPU: {currentProcess ? `${currentProcess.name} (ID: ${currentProcess.pid}, T. Restante: ${currentProcess.remainingTime})` : 'Ninguno'}</p>
+        <ColaProcesos queue={queue} />
+        <HistorialProcesos historial={history} />
       </div>
     </div>
   );

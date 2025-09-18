@@ -12,9 +12,9 @@ const HistorialProcesos = ({ historial }) => {
                     <thead>
                     <tr className="bg-gray-200">
                         <th className="border px-3 py-1">PID</th>
+                        <th className="border px-3 py-1">Nombre</th> {/* Nueva columna para el nombre */}
                         <th className="border px-3 py-1">Llegada</th>
                         <th className="border px-3 py-1">Ráfaga</th>
-                        <th className="border px-3 py-1">Prioridad</th>
                         <th className="border px-3 py-1">Inicio</th>
                         <th className="border px-3 py-1">Fin</th>
                         <th className="border px-3 py-1">Retorno</th>
@@ -25,13 +25,13 @@ const HistorialProcesos = ({ historial }) => {
                     {historial.map((p, index) => (
                         <tr key={index} className="text-center">
                             <td className="border px-3 py-1">{p.pid}</td>
-                            <td className="border px-3 py-1">{p.llegada}</td>
-                            <td className="border px-3 py-1">{p.rafaga}</td>
-                            <td className="border px-3 py-1">{p.prioridad}</td>
-                            <td className="border px-3 py-1">{p.inicio}</td>
-                            <td className="border px-3 py-1">{p.fin}</td>
-                            <td className="border px-3 py-1">{p.retorno}</td>
-                            <td className="border px-3 py-1">{p.espera}</td>
+                            <td className="border px-3 py-1">{p.name}</td> {/* Nueva celda para el nombre */}
+                            <td className="border px-3 py-1">{p.arrivalTime}</td>
+                            <td className="border px-3 py-1">{p.cpuTime}</td>
+                            <td className="border px-3 py-1">{p.startTime}</td>
+                            <td className="border px-3 py-1">{p.finishTime}</td>
+                            <td className="border px-3 py-1">{p.turnaroundTime}</td>
+                            <td className="border px-3 py-1">{p.waitingTime}</td>
                         </tr>
                     ))}
                     </tbody>

@@ -5,7 +5,10 @@ import ColaProcesos from './components/ColaProcesos';
 import HistorialProcesos from './components/HistorialProcesos';
 import ControlSimulacion from './components/ControlSimulacion';
 
-const TIME_UNIT_MS = 3000; // 1 segundo por unidad de tiempo
+// Asegúrate de que tu `index.css` de Tailwind esté importado en `index.js`
+// También necesitas un `tailwind.config.js` bien configurado.
+
+const TIME_UNIT_MS = 1000;
 
 function App() {
   const [processes, setProcesses] = useState([]);
@@ -28,13 +31,12 @@ function App() {
         cpuTime: Number(newProcess.cpuTime),
         arrivalTime: Number(newProcess.arrivalTime),
         quantum: newProcess.quantum ? Number(newProcess.quantum) : 2,
-        startTime: -1, // -1 indica que aún no ha iniciado
+        startTime: -1,
       },
     ]);
     setPidCounter((prevCounter) => prevCounter + 1);
   };
 
-  // Bucle principal de la simulación (controla el tiempo)
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => {
@@ -43,7 +45,6 @@ function App() {
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  // Lógica de planificación y ejecución (se ejecuta en cada unidad de tiempo)
   useEffect(() => {
     if (!isRunning) return;
 
@@ -51,14 +52,12 @@ function App() {
     let newQueue = [...queue];
     let newHistory = [...history];
 
-    // 1. Mover nuevos procesos a la cola
     const newArrivals = processes.filter((p) => p.arrivalTime === currentTime);
     if (newArrivals.length > 0) {
       newQueue = [...newQueue, ...newArrivals];
       setProcesses((prevProcesses) => prevProcesses.filter((p) => p.arrivalTime !== currentTime));
     }
 
-    // 2. Ejecutar el proceso actual
     if (newCurrentProcess) {
       newCurrentProcess.remainingTime--;
       if (selectedAlgorithm === 'RoundRobin') {
@@ -66,7 +65,6 @@ function App() {
       }
     }
 
-    // 3. Lógica de finalización y expropiación
     if (newCurrentProcess && newCurrentProcess.remainingTime <= 0) {
       const finishTime = currentTime;
       const turnaroundTime = finishTime - newCurrentProcess.arrivalTime;
@@ -83,22 +81,25 @@ function App() {
       newQueue.push({ ...newCurrentProcess, quantumCount: 0 });
       newCurrentProcess = null;
     } else if (newCurrentProcess && selectedAlgorithm === 'SRTF') {
-      const shortestInQueue = newQueue.length > 0 ? [...newQueue].sort((a, b) => a.remainingTime - b.remainingTime)[0] : null;
-      if (shortestInQueue && shortestInQueue.remainingTime < newCurrentProcess.remainingTime) {
+      const allReadyProcesses = [...newQueue, ...(newCurrentProcess ? [newCurrentProcess] : [])];
+      const shortestInQueue = allReadyProcesses.length > 0 ? [...allReadyProcesses].sort((a, b) => a.remainingTime - b.remainingTime)[0] : null;
+      if (shortestInQueue && newCurrentProcess && shortestInQueue.pid !== newCurrentProcess.pid) {
         newQueue.push(newCurrentProcess);
         newCurrentProcess = null;
       }
     }
 
-    // 4. Elegir el siguiente proceso si la CPU está libre
     if (!newCurrentProcess && newQueue.length > 0) {
       switch (selectedAlgorithm) {
         case 'FCFS':
-        case 'RoundRobin':
+          newQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
           newCurrentProcess = newQueue.shift();
           break;
         case 'SJF':
           newQueue.sort((a, b) => a.cpuTime - b.cpuTime);
+          newCurrentProcess = newQueue.shift();
+          break;
+        case 'RoundRobin':
           newCurrentProcess = newQueue.shift();
           break;
         case 'SRTF':
@@ -114,21 +115,13 @@ function App() {
       }
     }
 
-    // 5. Actualizar el estado
     setCurrentProcess(newCurrentProcess);
     setQueue(newQueue);
     setHistory(newHistory);
+  }, [currentTime, isRunning, processes, selectedAlgorithm, currentProcess, queue, history]);
 
-  }, [currentTime, isRunning, processes, selectedAlgorithm , currentProcess, queue, history]);
-
-  const handleStartSimulation = () => {
-    setIsRunning(true);
-  };
-
-  const handleStopSimulation = () => {
-    setIsRunning(false);
-  };
-
+  const handleStartSimulation = () => setIsRunning(true);
+  const handleStopSimulation = () => setIsRunning(false);
   const handleCleanHistory = () => {
     setHistory([]);
     setCurrentTime(0);
@@ -138,29 +131,64 @@ function App() {
     setPidCounter(1);
     setIsRunning(false);
   };
-
   const handleSelectAlgorithm = (algo) => {
     setSelectedAlgorithm(algo);
     setIsRunning(false);
   };
 
   return (
-    <div className="app-container">
-      <h1>Simulador de Planificación de Procesos</h1>
-      <div className="controls-section">
-        <FormularioProceso addProcess={addProcess} />
-        <SelectorAlgoritmo onSelectAlgorithm={handleSelectAlgorithm} selectedAlgorithm={selectedAlgorithm} />
-        <ControlSimulacion
-          iniciarSimulacion={handleStartSimulation}
-          detenerSimulacion={handleStopSimulation}
-          limpiarHistorial={handleCleanHistory}
-          isRunning={isRunning}
-        />
-      </div>
-      <div className="simulation-status-section">
-        <p>Tiempo actual: {currentTime} unidad(es)</p>
-        <p>Proceso en CPU: {currentProcess ? `${currentProcess.name} (ID: ${currentProcess.pid}, T. Restante: ${currentProcess.remainingTime})` : 'Ninguno'}</p>
-        <ColaProcesos queue={queue} />
+    <div className="p-6 md:p-12 gradient-bg">
+      <div className="max-w-6xl mx-auto card-bg-gradient p-6 md:p-10 rounded-3xl shadow-[0_20px_50px_rgba(8,_112,_184,_0.2)]">
+        <header className="text-center mb-10">
+          <h1 className="text-3xl md:text-5xl font-extrabold text-gray-800 mb-2">Simulador de Planificación de Procesos</h1>
+          <p className="text-gray-600 text-lg">FCFS, SJF, SRTF, Round Robin</p>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+          <FormularioProceso addProcess={addProcess} />
+          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xl">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">Configuración de Simulación</h2>
+            <div className="mb-4">
+              <label htmlFor="algorithm" className="block text-gray-600 mb-2">Algoritmo de Planificación</label>
+              <SelectorAlgoritmo onSelectAlgorithm={handleSelectAlgorithm} selectedAlgorithm={selectedAlgorithm} />
+            </div>
+            <ControlSimulacion
+              iniciarSimulacion={handleStartSimulation}
+              detenerSimulacion={handleStopSimulation}
+              limpiarHistorial={handleCleanHistory}
+              isRunning={isRunning}
+            />
+            <div className="mt-6 text-center">
+              <p className="text-lg font-bold mt-2">Tiempo actual: <span id="currentTimeDisplay">{currentTime}</span></p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-700 mb-4">Cola de Procesos Listos</h2>
+              <ColaProcesos queue={queue} />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-700 mb-4">Estado de la CPU</h2>
+              <div id="cpuStatusContainer" className="min-h-[100px] bg-gray-50 rounded-lg p-4 border border-gray-200 flex items-center justify-center">
+                {currentProcess ? (
+                  <div>
+                    <p><strong>{currentProcess.name}</strong> (PID: {currentProcess.pid})</p>
+                    <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
+                      <div className="bg-blue-600 h-3 rounded-full transition-all duration-500" style={{ width: `${((currentProcess.cpuTime - currentProcess.remainingTime) / currentProcess.cpuTime) * 100}%` }}></div>
+                    </div>
+                    <p className="text-sm mt-1">Restante: {currentProcess.remainingTime}</p>
+                  </div>
+                ) : (
+                  <p className="text-gray-400 italic">CPU inactiva</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <HistorialProcesos historial={history} />
       </div>
     </div>

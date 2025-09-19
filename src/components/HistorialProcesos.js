@@ -2,41 +2,40 @@ import React from "react";
 
 const HistorialProcesos = ({ historial }) => {
     return (
-        <div className="bg-white shadow-lg rounded-lg p-4 mt-4">
-            <h2 className="text-lg font-bold mb-3">Historial de Procesos</h2>
-
-            {historial.length === 0 ? (
-                <p className="text-gray-500">No hay procesos completados aún.</p>
-            ) : (
-                <table className="table-auto w-full border-collapse border">
-                    <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border px-3 py-1">PID</th>
-                        <th className="border px-3 py-1">Nombre</th> {/* Nueva columna para el nombre */}
-                        <th className="border px-3 py-1">Llegada</th>
-                        <th className="border px-3 py-1">Ráfaga</th>
-                        <th className="border px-3 py-1">Inicio</th>
-                        <th className="border px-3 py-1">Fin</th>
-                        <th className="border px-3 py-1">Retorno</th>
-                        <th className="border px-3 py-1">Espera</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {historial.map((p, index) => (
-                        <tr key={index} className="text-center">
-                            <td className="border px-3 py-1">{p.pid}</td>
-                            <td className="border px-3 py-1">{p.name}</td> {/* Nueva celda para el nombre */}
-                            <td className="border px-3 py-1">{p.arrivalTime}</td>
-                            <td className="border px-3 py-1">{p.cpuTime}</td>
-                            <td className="border px-3 py-1">{p.startTime}</td>
-                            <td className="border px-3 py-1">{p.finishTime}</td>
-                            <td className="border px-3 py-1">{p.turnaroundTime}</td>
-                            <td className="border px-3 py-1">{p.waitingTime}</td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            )}
+        <div className="mt-10 bg-white p-6 rounded-2xl border border-gray-200 shadow-xl">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">Historial de Procesos Completados</h2>
+            <div id="historyTableContainer" className="overflow-x-auto">
+                {historial.length === 0 ? (
+                    <p id="historyPlaceholder" className="text-center text-gray-400 italic mt-4">No hay procesos completados.</p>
+                ) : (
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PID</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Llegada</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ejecución</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finalización</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo de Retorno</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo de Espera</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" className="bg-white divide-y divide-gray-200">
+                            {historial.map((p, index) => (
+                                <tr key={index}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.pid}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.arrivalTime}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.cpuTime}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.finishTime}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.turnaroundTime}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.waitingTime}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
         </div>
     );
 };

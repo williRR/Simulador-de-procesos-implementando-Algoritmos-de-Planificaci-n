@@ -16,4 +16,4 @@ const ColaProcesos = ({ queue }) => {
   );
 };
 
-export default ColaProcesos;
+export default ColaProcesos;

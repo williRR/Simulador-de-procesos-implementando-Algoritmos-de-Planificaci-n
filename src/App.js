@@ -5,12 +5,12 @@ import ColaProcesos from './components/ColaProcesos';
 import HistorialProcesos from './components/HistorialProcesos';
 import ControlSimulacion from './components/ControlSimulacion';
 
-// Asegúrate de que tu `index.css` de Tailwind esté importado en `index.js`
-// También necesitas un `tailwind.config.js` bien configurado.
-
+//Define la duracion de la unidad de tiempo
 const TIME_UNIT_MS = 1000;
 
 function App() {
+
+  //Declaracion de las constantes para las diferentes partes del programa
   const [processes, setProcesses] = useState([]);
   const [queue, setQueue] = useState([]);
   const [history, setHistory] = useState([]);
@@ -20,6 +20,7 @@ function App() {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('FCFS');
   const [pidCounter, setPidCounter] = useState(1);
 
+  //Recibe informacion de un proceso desde el FormularioProceso
   const addProcess = (newProcess) => {
     setProcesses((prevProcesses) => [
       ...prevProcesses,
@@ -37,6 +38,8 @@ function App() {
     setPidCounter((prevCounter) => prevCounter + 1);
   };
 
+  //Tick de reloj para la simulacion
+  //Establece un intervalo que aumenta cada segundo
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => {
@@ -45,19 +48,23 @@ function App() {
     return () => clearInterval(interval);
   }, [isRunning]);
 
+  //Logica principal del programa  
   useEffect(() => {
     if (!isRunning) return;
 
     let newCurrentProcess = currentProcess ? { ...currentProcess } : null;
     let newQueue = [...queue];
     let newHistory = [...history];
-
+   
+    //Añade procesos a la cola 
     const newArrivals = processes.filter((p) => p.arrivalTime === currentTime);
     if (newArrivals.length > 0) {
       newQueue = [...newQueue, ...newArrivals];
       setProcesses((prevProcesses) => prevProcesses.filter((p) => p.arrivalTime !== currentTime));
     }
 
+    //Ejecuta el proceso actual reduciendo su tiempo en CPU 
+    //Si es Round Robin incrementa el contador de quantum
     if (newCurrentProcess) {
       newCurrentProcess.remainingTime--;
       if (selectedAlgorithm === 'RoundRobin') {
@@ -65,6 +72,7 @@ function App() {
       }
     }
 
+    //Verifica si el proceso termino para añadirlo al historial
     if (newCurrentProcess && newCurrentProcess.remainingTime <= 0) {
       const finishTime = currentTime;
       const turnaroundTime = finishTime - newCurrentProcess.arrivalTime;
@@ -77,9 +85,13 @@ function App() {
         waitingTime: waitingTime,
       });
       newCurrentProcess = null;
+
+      //Si se termino el quantum devuelve el proceso a la cola
     } else if (newCurrentProcess && selectedAlgorithm === 'RoundRobin' && newCurrentProcess.quantumCount >= newCurrentProcess.quantum) {
       newQueue.push({ ...newCurrentProcess, quantumCount: 0 });
       newCurrentProcess = null;
+
+      //Compara procesos para determinar el mas corto y enviar a cola el mas largo
     } else if (newCurrentProcess && selectedAlgorithm === 'SRTF') {
       const allReadyProcesses = [...newQueue, ...(newCurrentProcess ? [newCurrentProcess] : [])];
       const shortestInQueue = allReadyProcesses.length > 0 ? [...allReadyProcesses].sort((a, b) => a.remainingTime - b.remainingTime)[0] : null;
@@ -89,6 +101,7 @@ function App() {
       }
     }
 
+    //Verifica si la CPU esta libre y ordena la cola segun el algoritmo y envia el primer proceso a la CPU
     if (!newCurrentProcess && newQueue.length > 0) {
       switch (selectedAlgorithm) {
         case 'FCFS':
@@ -115,11 +128,13 @@ function App() {
       }
     }
 
+    //Actualiza todos los estados al final de cada tick para mostrar informacion nueva
     setCurrentProcess(newCurrentProcess);
     setQueue(newQueue);
     setHistory(newHistory);
   }, [currentTime, isRunning, processes, selectedAlgorithm, currentProcess, queue, history]);
 
+  //Funciones de los botones en pantalla
   const handleStartSimulation = () => setIsRunning(true);
   const handleStopSimulation = () => setIsRunning(false);
   const handleCleanHistory = () => {
@@ -136,6 +151,7 @@ function App() {
     setIsRunning(false);
   };
 
+  //Define la estructura HTML 
   return (
     <div className="p-6 md:p-12 gradient-bg">
       <div className="max-w-6xl mx-auto card-bg-gradient p-6 md:p-10 rounded-3xl shadow-[0_20px_50px_rgba(8,_112,_184,_0.2)]">

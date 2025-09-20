@@ -36,29 +36,29 @@ Tabla de historial mostrando los procesos que han completado su ejecución.
 Para ejecutar el proyecto en tu máquina local, sigue estos pasos:
 
 1.  Clona el repositorio:
-     bash
-    ```
-    git clone https://github.com/williRR/Simulador-de-procesos-implementando-Algoritmos-de-Planificaci-n.
 
+    ```bash
+    git clone https://github.com/williRR/Simulador-de-procesos-implementando-Algoritmos-de-Planificaci-n.
+    ```
     
 
 3.  Navega al directorio del proyecto:
-    bash
-    ```
-    cd Simulador-de-procesos-implementando-Algoritmos-de-Planificaci-n
     
+    ```bash
+    cd Simulador-de-procesos-implementando-Algoritmos-de-Planificaci-n
+    ```
 
 4.  Instala las dependencias:
-    bash
-    ```
-    npm install
     
+    ```bash
+    npm install
+    ```
 
 5.  Inicia el servidor de desarrollo:
-    bash
-    ```
-    npm start
     
+    ```bash
+    npm start
+    ```
 
 La aplicación se abrirá en tu navegador en http://localhost:3000.
 

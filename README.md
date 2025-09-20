@@ -18,10 +18,16 @@ personalizados y observar cómo son gestionados en una cola de espera y ejecutad
 ### Capturas de Pantalla
 
 ![Captura 1: Vista principal]
+<img width="1352" height="613" alt="image" src="https://github.com/user-attachments/assets/ccb3267c-71a2-4d57-9d18-8884438349f8" />
+
 
 ![Captura 2: Procesos en la cola]
+<img width="1352" height="613" alt="image" src="https://github.com/user-attachments/assets/c1e0c4ac-aa6f-41bf-a6eb-b12c35babaa6" />
+
 
 ![Captura 3: Historial de procesos]
+<img width="1091" height="280" alt="image" src="https://github.com/user-attachments/assets/1b8ba57b-4080-476a-b571-37c4e67ed55c" />
+
 
 Tabla de historial mostrando los procesos que han completado su ejecución.
 

@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import FormularioProceso from './components/FormularioProceso';
 import SelectorAlgoritmo from './components/SelectorAlgoritmo';
 import ColaProcesos from './components/ColaProcesos';
 import HistorialProcesos from './components/HistorialProcesos';
 import ControlSimulacion from './components/ControlSimulacion';
 
-//Define la duracion de la unidad de tiempo
+// Duración de 1 unidad de tiempo en ms (ajusta si quieres ver más lento)
 const TIME_UNIT_MS = 1000;
 
 function App() {
-
-  //Declaracion de las constantes para las diferentes partes del programa
+  // Estados
   const [processes, setProcesses] = useState([]);
   const [queue, setQueue] = useState([]);
   const [history, setHistory] = useState([]);
@@ -20,10 +19,21 @@ function App() {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('FCFS');
   const [pidCounter, setPidCounter] = useState(1);
 
-  //Recibe informacion de un proceso desde el FormularioProceso
+  // Refs para evitar re-ejecuciones internas del efecto
+  const processesRef = useRef(processes);
+  const queueRef = useRef(queue);
+  const historyRef = useRef(history);
+  const currentProcessRef = useRef(currentProcess);
+
+  useEffect(() => { processesRef.current = processes; }, [processes]);
+  useEffect(() => { queueRef.current = queue; }, [queue]);
+  useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { currentProcessRef.current = currentProcess; }, [currentProcess]);
+
+  // Añadir proceso desde FormularioProceso
   const addProcess = (newProcess) => {
-    setProcesses((prevProcesses) => [
-      ...prevProcesses,
+    setProcesses(prev => [
+      ...prev,
       {
         ...newProcess,
         pid: pidCounter,
@@ -33,42 +43,40 @@ function App() {
         arrivalTime: Number(newProcess.arrivalTime),
         quantum: newProcess.quantum ? Number(newProcess.quantum) : 2,
         startTime: -1,
-      },
+      }
     ]);
-    setPidCounter((prevCounter) => prevCounter + 1);
+    setPidCounter(c => c + 1);
   };
 
-  //Tick de reloj para la simulacion
-  //Establece un intervalo que aumenta cada segundo
+  // Tick del reloj
   useEffect(() => {
     if (!isRunning) return;
-    const interval = setInterval(() => {
-      setCurrentTime((prevTime) => prevTime + 1);
-    }, TIME_UNIT_MS);
+    const interval = setInterval(() => setCurrentTime(t => t + 1), TIME_UNIT_MS);
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  //Logica principal del programa  
+  // Lógica principal
   useEffect(() => {
     if (!isRunning) return;
 
-    let newCurrentProcess = currentProcess ? { ...currentProcess } : null;
-    let newQueue = [...queue];
-    let newHistory = [...history];
-   
-    //Añade procesos a la cola 
-    const newArrivals = processes.filter((p) => p.arrivalTime === currentTime);
-    if (newArrivals.length > 0) {
-      newQueue = [...newQueue, ...newArrivals];
-      setProcesses((prevProcesses) => prevProcesses.filter((p) => p.arrivalTime !== currentTime));
+    let newProcesses = [...processesRef.current];
+    let newQueue = [...queueRef.current];
+    let newHistory = [...historyRef.current];
+    let newCurrentProcess = currentProcessRef.current ? { ...currentProcessRef.current } : null;
+
+    //Añade procesos a la cola
+    const arrivals = newProcesses.filter(p => p.arrivalTime === currentTime);
+    if (arrivals.length > 0) {
+      newQueue = [...newQueue, ...arrivals];
+      newProcesses = newProcesses.filter(p => p.arrivalTime !== currentTime);
     }
 
-    //Ejecuta el proceso actual reduciendo su tiempo en CPU 
+    //Ejeceuta el proceso actual reduciendo su tiempo en CPU
     //Si es Round Robin incrementa el contador de quantum
     if (newCurrentProcess) {
-      newCurrentProcess.remainingTime--;
+      newCurrentProcess.remainingTime -= 1;
       if (selectedAlgorithm === 'RoundRobin') {
-        newCurrentProcess.quantumCount++;
+        newCurrentProcess.quantumCount = (newCurrentProcess.quantumCount || 0) + 1;
       }
     }
 
@@ -77,27 +85,28 @@ function App() {
       const finishTime = currentTime;
       const turnaroundTime = finishTime - newCurrentProcess.arrivalTime;
       const waitingTime = turnaroundTime - newCurrentProcess.cpuTime;
-
       newHistory.push({
         ...newCurrentProcess,
-        finishTime: finishTime,
-        turnaroundTime: turnaroundTime,
-        waitingTime: waitingTime,
+        finishTime,
+        turnaroundTime,
+        waitingTime,
       });
       newCurrentProcess = null;
-
-      //Si se termino el quantum devuelve el proceso a la cola
-    } else if (newCurrentProcess && selectedAlgorithm === 'RoundRobin' && newCurrentProcess.quantumCount >= newCurrentProcess.quantum) {
+    }
+    //Para Round Robin si se termina el quantum devualve el proceso a cola
+    else if (newCurrentProcess && selectedAlgorithm === 'RoundRobin' && newCurrentProcess.quantumCount >= newCurrentProcess.quantum) {
       newQueue.push({ ...newCurrentProcess, quantumCount: 0 });
       newCurrentProcess = null;
-
-      //Compara procesos para determinar el mas corto y enviar a cola el mas largo
-    } else if (newCurrentProcess && selectedAlgorithm === 'SRTF') {
-      const allReadyProcesses = [...newQueue, ...(newCurrentProcess ? [newCurrentProcess] : [])];
-      const shortestInQueue = allReadyProcesses.length > 0 ? [...allReadyProcesses].sort((a, b) => a.remainingTime - b.remainingTime)[0] : null;
-      if (shortestInQueue && newCurrentProcess && shortestInQueue.pid !== newCurrentProcess.pid) {
-        newQueue.push(newCurrentProcess);
-        newCurrentProcess = null;
+    }
+    //Compara procesos para determinar el mas corto y enviar a cola el mas largo
+    else if (newCurrentProcess && selectedAlgorithm === 'SRTF') {
+      const allReady = [...newQueue, newCurrentProcess];
+      if (allReady.length > 0) {
+        const shortest = allReady.sort((a,b) => a.remainingTime - b.remainingTime)[0];
+        if (shortest && shortest.pid !== newCurrentProcess.pid) {
+          newQueue.push(newCurrentProcess);
+          newCurrentProcess = null;
+        }
       }
     }
 
@@ -121,18 +130,20 @@ function App() {
           break;
         default:
           newCurrentProcess = newQueue.shift();
-          break;
       }
       if (newCurrentProcess && newCurrentProcess.startTime === -1) {
         newCurrentProcess.startTime = currentTime;
       }
     }
 
-    //Actualiza todos los estados al final de cada tick para mostrar informacion nueva
-    setCurrentProcess(newCurrentProcess);
+    //Actualiza los estados UNA SOLA VEZ al final del tick
+    setProcesses(newProcesses);
     setQueue(newQueue);
     setHistory(newHistory);
-  }, [currentTime, isRunning, processes, selectedAlgorithm, currentProcess, queue, history]);
+    setCurrentProcess(newCurrentProcess);
+
+    //Al limitar las dependencias, este efecto sólo se ejecuta por cada cambio de tiempo (tick)
+  }, [currentTime, isRunning, selectedAlgorithm]);
 
   //Funciones de los botones en pantalla
   const handleStartSimulation = () => setIsRunning(true);

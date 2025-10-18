@@ -1,40 +1,51 @@
 import React from "react";
-// Importamos React para poder usar JSX y crear el componente funcional.
 
 // Componente funcional que recibe props:
-// iniciarSimulacion → función que arranca la simulación
-// detenerSimulacion → función que la detiene
-// limpiarHistorial → función que borra el historial de procesos
-// isRunning → booleano que indica si la simulación está activa o no
-const ControlSimulacion = ({ iniciarSimulacion, detenerSimulacion, limpiarHistorial, isRunning }) => {
+// iniciar → función que arranca la simulación
+// pausar → función que pausa la simulación
+// reiniciar → función que reinicia la simulación
+// limpiar → función que borra el historial de procesos
+// simulando → booleano que indica si la simulación está activa o no
+const ControlSimulacion = ({ iniciar, pausar, reiniciar, limpiar, simulando }) => {
     return (
         // Contenedor de los botones con estilos de Tailwind
-        <div className="bg-white shadow-lg rounded-lg p-4 mt-4 flex gap-4">
+        <div className="control-simulacion bg-white shadow-lg rounded-lg p-4 mt-4 flex flex-col gap-4">
 
-            {/* Botón para iniciar la simulación */}
+            {/* Título del panel de control */}
+            <h3 className="text-lg font-semibold">Control de Simulación</h3>
+
+            {/* Botón para iniciar o continuar la simulación */}
             <button
-                onClick={iniciarSimulacion} // Ejecuta la función iniciarSimulacion al hacer clic
-                className="bg-blue-500 text-white px-4 py-2 rounded disabled:bg-gray-400" // Estilos
-                disabled={isRunning} // Si la simulación ya está corriendo, se deshabilita
+                onClick={iniciar} // Ejecuta la función iniciar al hacer clic
+                className="btn-iniciar bg-blue-500 text-white px-4 py-2 rounded disabled:bg-gray-400" // Estilos
+                disabled={simulando} // Si la simulación ya está corriendo, se deshabilita
             >
-                Iniciar Simulación
+                {simulando ? '▶ Ejecutando...' : '▶ Iniciar Simulación'}
             </button>
 
-            {/* Botón para detener la simulación */}
+            {/* Botón para pausar la simulación */}
             <button
-                onClick={detenerSimulacion} // Ejecuta la función detenerSimulacion al hacer clic
-                className="bg-gray-500 text-white px-4 py-2 rounded disabled:bg-gray-400" // Estilos
-                disabled={!isRunning} // Si la simulación NO está corriendo, se deshabilita
+                onClick={pausar} // Ejecuta la función pausar al hacer clic
+                className="btn-pausar bg-yellow-500 text-white px-4 py-2 rounded disabled:bg-gray-400" // Estilos
+                disabled={!simulando} // Si la simulación NO está corriendo, se deshabilita
             >
-                Detener Simulación
+                ⏸ Pausar
+            </button>
+
+            {/* Botón para reiniciar la simulación */}
+            <button
+                onClick={reiniciar} // Ejecuta la función reiniciar al hacer clic
+                className="btn-reiniciar bg-green-500 text-white px-4 py-2 rounded" // Estilos
+            >
+                ↻ Reiniciar
             </button>
 
             {/* Botón para limpiar el historial */}
             <button
-                onClick={limpiarHistorial} // Ejecuta la función limpiarHistorial al hacer clic
-                className="bg-red-500 text-white px-4 py-2 rounded" // Estilos
+                onClick={limpiar} // Ejecuta la función limpiar al hacer clic
+                className="btn-limpiar bg-red-500 text-white px-4 py-2 rounded" // Estilos
             >
-                Limpiar Historial
+                🗑 Limpiar Todo
             </button>
         </div>
     );

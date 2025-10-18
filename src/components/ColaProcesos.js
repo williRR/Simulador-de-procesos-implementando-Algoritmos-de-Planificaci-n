@@ -1,19 +1,30 @@
 import React from 'react';
 
-const ColaProcesos = ({ queue }) => {
+const ColaProcesos = ({ procesos }) => {
   return (
-    <div id="readyQueueContainer" className="min-h-[100px] bg-gray-50 rounded-lg p-4 border border-gray-200 overflow-x-auto">
-      {queue.length === 0 ? (
-        <p id="readyQueuePlaceholder" className="text-center text-gray-400 italic">No hay procesos en la cola.</p>
+    <div className="cola-procesos">
+      <h3>Procesos Ingresados</h3>
+      {procesos.length === 0 ? (
+        <p className="mensaje-vacio">No hay procesos en la cola</p>
       ) : (
-        queue.map(p => (
-          <div key={p.pid} className="bg-blue-100 border-l-4 border-blue-500 text-blue-800 p-2 mb-2 rounded-lg">
-            PID: {p.pid} | Nombre: {p.name} | T. Restante: {p.remainingTime}
-          </div>
-        ))
+        <div className="lista-procesos">
+          {procesos.map((proceso, index) => (
+            <div key={proceso.id} className="proceso-item">
+              <div className="proceso-header">
+                <span className="proceso-numero">P{index + 1}</span>
+                <span className="proceso-rafaga">Ráfaga: {proceso.rafaga}</span>
+              </div>
+              <div className="proceso-detalles">
+                <small>Llegada: {proceso.llegada}</small>
+                {proceso.prioridad && <small>Prioridad: {proceso.prioridad}</small>}
+                <small>Restante: {proceso.tiempoRestante}</small>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
 };
 
-export default ColaProcesos;
+export default ColaProcesos;

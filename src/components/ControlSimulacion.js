@@ -1,5 +1,5 @@
 import React from "react";
-
+// prueba
 // Componente funcional que recibe props:
 // iniciar → función que arranca la simulación
 // pausar → función que pausa la simulación

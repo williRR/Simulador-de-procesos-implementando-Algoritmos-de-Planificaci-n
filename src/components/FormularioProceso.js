@@ -51,7 +51,7 @@ const FormularioProceso = ({ agregarProceso, algoritmo }) => {
         </div>
 
         <div className="form-group">
-          <label>Tiempo de Ráfaga (CPU):</label>
+          <label>Tiempo en CPU (CPU):</label>
           <input
             type="number"
             name="rafaga"

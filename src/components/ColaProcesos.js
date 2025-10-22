@@ -11,7 +11,8 @@ const ColaProcesos = ({ procesos }) => {
           {procesos.map((proceso, index) => (
             <div key={proceso.id} className="proceso-item">
               <div className="proceso-header">
-                <span className="proceso-numero">P{index + 1}</span>
+                {/* Mostrar id real si existe, si no usar índice */}
+                <span className="proceso-numero">P{proceso.id !== undefined ? proceso.id : index}</span>
                 <span className="proceso-rafaga">Ráfaga: {proceso.rafaga}</span>
               </div>
               <div className="proceso-detalles">

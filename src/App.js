@@ -72,27 +72,27 @@ function App() {
           .filter(p => p.llegada <= tiempoActual && p.tiempoRestante > 0)
           .map(p => p.id);
 
-      setRrQueue(prev => {
-        const setPrev = new Set(prev);
-        const nueva = [...prev];
-        for (const id of llegados) {
-          if (id !== rrCurrentId && !setPrev.has(id)) {
-            nueva.push(id);
-            setPrev.add(id);
-          }
+      // Construir cola combinada (estado actual + recién llegados) de forma síncrona,
+      // para poder seleccionar y ejecutar un proceso que llega en el mismo instante.
+      const combined = [...rrQueue];
+      const seen = new Set(combined);
+      for (const id of llegados) {
+        if (id !== rrCurrentId && !seen.has(id)) {
+          combined.push(id);
+          seen.add(id);
         }
-        return nueva;
-      });
+      }
 
       let currentId = rrCurrentId;
-      if (!currentId) {
-        if (rrQueue.length > 0) {
-          currentId = rrQueue[0];
-          setRrQueue(prev => prev.slice(1));
+      if (currentId == null) {
+        if (combined.length > 0) {
+          // Tomar el primer elemento de la cola combinada como current
+          currentId = combined.shift();
+          setRrQueue(combined);
           setRrCurrentId(currentId);
           setRrSlice(0);
         } else {
-          // CPU ociosa
+          // CPU ociosa (no hay procesos llegados todavía)
           setEstadosEjecucion(prev => ({
             ...prev,
             [tiempoActual]: activos.map(p => ({
@@ -102,6 +102,11 @@ function App() {
           }));
           setTiempoActual(t => t + 1);
           return;
+        }
+      } else {
+        // Si ya había current y añadimos llegadas, actualizar la cola
+        if (combined.length !== rrQueue.length) {
+          setRrQueue(combined);
         }
       }
 
@@ -210,26 +215,28 @@ function App() {
     setTiempoActual(prev => prev + 1);
   };
 
-  // --- INICIAR, PAUSAR, REINICIAR, LIMPIAR ---
-  const iniciarSimulacion = () => {
-    if (procesos.length === 0) {
-      alert('Agrega al menos un proceso');
-      return;
-    }
 
-    // Reiniciar valores
-    setTiempoActual(0);
-    setEstadosEjecucion({});
-    setProcesosFinalizados([]);
-    setRrQueue([]);
-    setRrCurrentId(null);
-    setRrSlice(0);
+  // --- INICIAR, PAUSAR, REINICIAR, LIMPIAR ---
+  const iniciarSimulacion = () => {
+    if (procesos.length === 0) {
+      alert('Agrega al menos un proceso');
+      return;
+    }
 
-    // 🔹 Ejecutar primer paso inmediatamente
-    ejecutarPasoSimulacion();
-    setSimulando(true);
-  };
+    // Reiniciar valores
+    setTiempoActual(0);
+    setEstadosEjecucion({});
+    setProcesosFinalizados([]);
+    setRrQueue([]);
+    setRrCurrentId(null);
+    setRrSlice(0);
 
+    // 🔹 Ejecutar primer paso inmediatamente
+    // ELIMINA O COMENTA ESTA LÍNEA:
+    // ejecutarPasoSimulacion(); 
+    
+    setSimulando(true);
+  };
   const pausarSimulacion = () => setSimulando(false);
 
   const reiniciarSimulacion = () => {

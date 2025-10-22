@@ -92,7 +92,8 @@ const HistorialProcesos = ({ procesos, tiempoActual }) => {
                                 // Cada fila representa un proceso completado
                                 <tr key={proceso.id}>
                                     {/* Se muestran las propiedades del proceso */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">P{index + 1}</td>
+                                    {/* Mostrar id real si existe (permite ver P0); si no usar índice */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">P{proceso.id !== undefined ? proceso.id : index}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.llegada}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.rafaga}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.tiempoFinalizacion}</td>

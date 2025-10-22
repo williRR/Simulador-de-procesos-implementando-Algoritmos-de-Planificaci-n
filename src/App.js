@@ -16,74 +16,61 @@ function App() {
   const [procesosFinalizados, setProcesosFinalizados] = useState([]);
   const [quantum, setQuantum] = useState(2);
 
-  // Round Robin
-  const [rrQueue, setRrQueue] = useState([]);
+  // RR minimal
+  const [rrQueue, setRrQueue] = useState([]);   // IDs en FIFO
   const [rrCurrentId, setRrCurrentId] = useState(null);
   const [rrSlice, setRrSlice] = useState(0);
 
   // Agregar proceso
   const agregarProceso = (proceso) => {
-    const nuevoProceso = {
+    const nuevo = {
       ...proceso,
       id: Date.now(),
       tiempoRestante: proceso.rafaga,
-      tiempoEspera: 0,
+      tiempoFinalizacion: 0,
       tiempoRetorno: 0,
-      tiempoFinalizacion: 0
+      tiempoEspera: 0,
     };
-    setProcesos(prev => [...prev, nuevoProceso]);
+    setProcesos(prev => [...prev, nuevo]);
   };
 
-  // useEffect para ejecutar pasos
   useEffect(() => {
     if (!simulando || procesos.length === 0) return;
-    const intervalo = setInterval(() => ejecutarPasoSimulacion(), 500);
-    return () => clearInterval(intervalo);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const intv = setInterval(() => ejecutarPaso(), 500);
+    return () => clearInterval(intv);
   }, [simulando, procesos, algoritmo, quantum, rrQueue, rrCurrentId, rrSlice, tiempoActual]);
 
-  // Filtrar procesos activos
-  const procesosNoFinalizados = () =>
-      procesos.filter(p => !procesosFinalizados.find(pf => pf.id === p.id));
+  const activosNoFin = () =>
+      procesos.filter(p => !procesosFinalizados.some(f => f.id === p.id));
 
-  // Finalizar proceso
-  const finalizarProceso = (p, tFin) => {
+  const finalizar = (p, tFin) => {
     const fin = {
       ...p,
       tiempoRestante: 0,
       tiempoFinalizacion: tFin,
       tiempoRetorno: tFin - p.llegada,
-      tiempoEspera: tFin - p.llegada - p.rafaga
+      tiempoEspera: tFin - p.llegada - p.rafaga,
     };
     setProcesosFinalizados(prev => [...prev, fin]);
   };
 
-  // --- EJECUCIÓN DE UN PASO DE SIMULACIÓN ---
-  const ejecutarPasoSimulacion = () => {
-    const activos = procesosNoFinalizados();
-    if (activos.length === 0) {
-      setSimulando(false);
-      return;
-    }
+  const ejecutarPaso = () => {
+    const activos = activosNoFin();
+    if (activos.length === 0) { setSimulando(false); return; }
 
-    // === ROUND ROBIN ===
+    // ========== ROUND ROBIN BÁSICO ==========
     if (algoritmo === 'Round Robin') {
+      // encolar llegados (y no duplicar)
       const llegados = activos
           .filter(p => p.llegada <= tiempoActual && p.tiempoRestante > 0)
           .map(p => p.id);
-
       setRrQueue(prev => {
-        const setPrev = new Set(prev);
         const nueva = [...prev];
-        for (const id of llegados) {
-          if (id !== rrCurrentId && !setPrev.has(id)) {
-            nueva.push(id);
-            setPrev.add(id);
-          }
-        }
+        for (const id of llegados) if (!nueva.includes(id) && id !== rrCurrentId) nueva.push(id);
         return nueva;
       });
 
+      // elegir actual
       let currentId = rrCurrentId;
       if (!currentId) {
         if (rrQueue.length > 0) {
@@ -92,7 +79,7 @@ function App() {
           setRrCurrentId(currentId);
           setRrSlice(0);
         } else {
-          // CPU ociosa
+          // ocioso: registrar y avanzar
           setEstadosEjecucion(prev => ({
             ...prev,
             [tiempoActual]: activos.map(p => ({
@@ -107,126 +94,103 @@ function App() {
 
       const actual = procesos.find(p => p.id === currentId);
       if (!actual || actual.tiempoRestante <= 0) {
-        setRrCurrentId(null);
-        setRrSlice(0);
+        setRrCurrentId(null); setRrSlice(0);
         setTiempoActual(t => t + 1);
         return;
       }
 
-      // 👇 Registrar estado ANTES de avanzar el tiempo
-      const nuevoEstado = activos.map(p => ({
+      // 1) Registrar estado EN el tiempo actual (columna 0 incluida)
+      const estado = activos.map(p => ({
         procesoId: p.id,
         estado:
-            p.id === currentId
-                ? 'ejecutando'
-                : p.llegada <= tiempoActual
-                    ? 'esperando'
-                    : 'pendiente'
+            p.id === currentId ? 'ejecutando' :
+                (p.llegada <= tiempoActual ? 'esperando' : 'pendiente')
       }));
-      setEstadosEjecucion(prev => ({
-        ...prev,
-        [tiempoActual]: nuevoEstado
-      }));
+      setEstadosEjecucion(prev => ({ ...prev, [tiempoActual]: estado }));
 
-      // Ejecutar una unidad
-      setProcesos(prev =>
-          prev.map(p =>
-              p.id === actual.id
-                  ? { ...p, tiempoRestante: Math.max(0, p.tiempoRestante - 1) }
-                  : p
-          )
-      );
+      // 2) Ejecutar 1 unidad
+      setProcesos(prev => prev.map(p =>
+          p.id === actual.id ? { ...p, tiempoRestante: Math.max(0, p.tiempoRestante - 1) } : p
+      ));
 
-      const terminara = actual.tiempoRestante - 1 === 0;
-
-      if (terminara) {
-        finalizarProceso(actual, tiempoActual + 1);
-        setRrCurrentId(null);
-        setRrSlice(0);
+      const termina = actual.tiempoRestante - 1 === 0;
+      if (termina) {
+        finalizar(actual, tiempoActual + 1);
+        setRrCurrentId(null); setRrSlice(0);
       } else {
         if (rrSlice + 1 >= quantum) {
-          setRrQueue(prev => [...prev, currentId]);
-          setRrCurrentId(null);
-          setRrSlice(0);
+          setRrQueue(prev => [...prev, currentId]); // al final
+          setRrCurrentId(null); setRrSlice(0);
         } else {
           setRrSlice(s => s + 1);
         }
       }
 
+      // 3) Avanzar reloj
       setTiempoActual(t => t + 1);
       return;
     }
 
-    // === FCFS / SJF / PRIORIDAD ===
-    let procesoEjecutando = null;
+    // ========== FCFS / SJF / PRIORIDAD ==========
+    let ejecutando = null;
     switch (algoritmo) {
       case 'FCFS':
-        procesoEjecutando = activos
-            .filter(p => p.llegada <= tiempoActual)
-            .sort((a, b) => a.llegada - b.llegada)[0];
+        ejecutando = activos.filter(p => p.llegada <= tiempoActual)
+            .sort((a,b) => a.llegada - b.llegada)[0];
         break;
       case 'SJF':
-        procesoEjecutando = activos
-            .filter(p => p.llegada <= tiempoActual)
-            .sort((a, b) => a.tiempoRestante - b.tiempoRestante)[0];
+        ejecutando = activos.filter(p => p.llegada <= tiempoActual)
+            .sort((a,b) => a.tiempoRestante - b.tiempoRestante)[0];
         break;
       case 'Prioridad':
-        procesoEjecutando = activos
-            .filter(p => p.llegada <= tiempoActual)
-            .sort((a, b) => a.prioridad - b.prioridad)[0];
+        ejecutando = activos.filter(p => p.llegada <= tiempoActual)
+            .sort((a,b) => a.prioridad - b.prioridad || a.llegada - b.llegada)[0];
         break;
       default:
-        procesoEjecutando = activos[0];
+        ejecutando = activos[0];
     }
 
-    // 👇 Registrar estado ANTES de avanzar tiempo
-    const nuevoEstado = activos.map(p => ({
+    // 1) Registrar estado en el tiempo actual
+    const estado = activos.map(p => ({
       procesoId: p.id,
       estado:
-          p.id === procesoEjecutando?.id
-              ? 'ejecutando'
-              : p.llegada <= tiempoActual
-                  ? 'esperando'
-                  : 'pendiente'
+          p.id === ejecutando?.id ? 'ejecutando' :
+              (p.llegada <= tiempoActual ? 'esperando' : 'pendiente')
     }));
-    setEstadosEjecucion(prev => ({
-      ...prev,
-      [tiempoActual]: nuevoEstado
-    }));
+    setEstadosEjecucion(prev => ({ ...prev, [tiempoActual]: estado }));
 
-    if (procesoEjecutando) {
-      setProcesos(prev =>
-          prev.map(p => {
-            if (p.id !== procesoEjecutando.id) return p;
-            const nuevoRestante = p.tiempoRestante - 1;
-            if (nuevoRestante === 0) {
-              finalizarProceso(p, tiempoActual + 1);
-            }
-            return { ...p, tiempoRestante: nuevoRestante };
-          })
-      );
+    // 2) Ejecutar 1 unidad
+    if (ejecutando) {
+      setProcesos(prev => prev.map(p => {
+        if (p.id !== ejecutando.id) return p;
+        const rest = p.tiempoRestante - 1;
+        if (rest === 0) finalizar(p, tiempoActual + 1);
+        return { ...p, tiempoRestante: rest };
+      }));
     }
 
-    setTiempoActual(prev => prev + 1);
+    // 3) Avanzar reloj
+    setTiempoActual(t => t + 1);
   };
 
-  // --- INICIAR, PAUSAR, REINICIAR, LIMPIAR ---
+  // ===== Controles =====
   const iniciarSimulacion = () => {
-    if (procesos.length === 0) {
-      alert('Agrega al menos un proceso');
-      return;
-    }
+    if (procesos.length === 0) { alert('Agrega al menos un proceso'); return; }
 
-    // Reiniciar valores
+    // reset total y estado inicial en t=0 (para que el Gantt muestre la columna 0)
     setTiempoActual(0);
     setEstadosEjecucion({});
     setProcesosFinalizados([]);
-    setRrQueue([]);
-    setRrCurrentId(null);
-    setRrSlice(0);
+    setProcesos(prev => prev.map(p => ({ ...p, tiempoRestante: p.rafaga })));
+    setRrQueue([]); setRrCurrentId(null); setRrSlice(0);
 
-    // 🔹 Ejecutar primer paso inmediatamente
-    ejecutarPasoSimulacion();
+    // opcional: estado visual de t=0 (si nadie llega en 0, quedará todo "pendiente")
+    const estado0 = procesos.map(p => ({
+      procesoId: p.id,
+      estado: p.llegada <= 0 ? 'esperando' : 'pendiente'
+    }));
+    setEstadosEjecucion({ 0: estado0 });
+
     setSimulando(true);
   };
 
@@ -238,28 +202,21 @@ function App() {
     setEstadosEjecucion({});
     setProcesosFinalizados([]);
     setProcesos(prev => prev.map(p => ({ ...p, tiempoRestante: p.rafaga })));
-    setRrQueue([]);
-    setRrCurrentId(null);
-    setRrSlice(0);
+    setRrQueue([]); setRrCurrentId(null); setRrSlice(0);
   };
 
   const limpiarProcesos = () => {
-    setProcesos([]);
-    setTiempoActual(0);
-    setEstadosEjecucion({});
-    setProcesosFinalizados([]);
     setSimulando(false);
-    setRrQueue([]);
-    setRrCurrentId(null);
-    setRrSlice(0);
+    setProcesos([]);
+    setProcesosFinalizados([]);
+    setEstadosEjecucion({});
+    setTiempoActual(0);
+    setRrQueue([]); setRrCurrentId(null); setRrSlice(0);
   };
 
-  // --- RENDER ---
   return (
       <div className="App">
-        <header>
-          <h1>Simulador de Planificación de Procesos</h1>
-        </header>
+        <header><h1>Simulador de Planificación de Procesos</h1></header>
 
         <div className="container">
           <div className="panel-izquierdo">
@@ -269,10 +226,7 @@ function App() {
                 quantum={quantum}
                 setQuantum={setQuantum}
             />
-            <FormularioProceso
-                agregarProceso={agregarProceso}
-                algoritmo={algoritmo}
-            />
+            <FormularioProceso agregarProceso={agregarProceso} algoritmo={algoritmo} />
             <ControlSimulacion
                 iniciar={iniciarSimulacion}
                 pausar={pausarSimulacion}
@@ -289,10 +243,7 @@ function App() {
                 tiempoTotal={tiempoActual}
                 estadosEjecucion={estadosEjecucion}
             />
-            <HistorialProcesos
-                procesos={procesosFinalizados}
-                tiempoActual={tiempoActual}
-            />
+            <HistorialProcesos procesos={procesosFinalizados} tiempoActual={tiempoActual} />
           </div>
         </div>
       </div>
@@ -300,6 +251,9 @@ function App() {
 }
 
 export default App;
+
+
+
 
 
 

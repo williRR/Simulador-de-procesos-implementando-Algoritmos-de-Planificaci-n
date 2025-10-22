@@ -79,7 +79,7 @@ const FormularioProceso = ({ agregarProceso, algoritmo }) => {
         )}
 
         <button type="submit" 
-          className="mt-6 w-full text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 btn-blue-gradient">
+          className="mt-6 w-full text-black font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 btn-blue-gradient">
           Añadir Proceso
         </button>
       </form>

@@ -16,7 +16,10 @@ function App() {
   const [procesosFinalizados, setProcesosFinalizados] = useState([]);
   const [quantum, setQuantum] = useState(2);
 
-  // Agregar proceso
+  // NUEVOS ESTADOS PARA ROUND ROBIN
+  const [indiceActual, setIndiceActual] = useState(0);
+  const [contadorQuantum, setContadorQuantum] = useState(0);
+
   const agregarProceso = (proceso) => {
     const nuevoProceso = {
       ...proceso,
@@ -29,7 +32,6 @@ function App() {
     setProcesos([...procesos, nuevoProceso]);
   };
 
-  // Ejecutar simulación
   useEffect(() => {
     if (!simulando || procesos.length === 0) return;
 
@@ -41,8 +43,10 @@ function App() {
   }, [simulando, tiempoActual, procesos]);
 
   const ejecutarPasoSimulacion = () => {
-    const procesosActivos = procesos.filter(p => !procesosFinalizados.find(pf => pf.id === p.id));
-    
+    const procesosActivos = procesos.filter(
+        (p) => !procesosFinalizados.find((pf) => pf.id === p.id)
+    );
+
     if (procesosActivos.length === 0) {
       setSimulando(false);
       return;
@@ -50,72 +54,95 @@ function App() {
 
     let procesoEjecutando = null;
 
+    // --- SELECCIÓN DE PROCESO SEGÚN ALGORITMO ---
     switch (algoritmo) {
       case 'FCFS':
         procesoEjecutando = procesosActivos
-          .filter(p => p.llegada <= tiempoActual)
-          .sort((a, b) => a.llegada - b.llegada)[0];
+            .filter((p) => p.llegada <= tiempoActual)
+            .sort((a, b) => a.llegada - b.llegada)[0];
         break;
-      
+
       case 'SJF':
         procesoEjecutando = procesosActivos
-          .filter(p => p.llegada <= tiempoActual)
-          .sort((a, b) => a.tiempoRestante - b.tiempoRestante)[0];
+            .filter((p) => p.llegada <= tiempoActual)
+            .sort((a, b) => a.tiempoRestante - b.tiempoRestante)[0];
         break;
-      
+
       case 'Prioridad':
         procesoEjecutando = procesosActivos
-          .filter(p => p.llegada <= tiempoActual)
-          .sort((a, b) => a.prioridad - b.prioridad)[0];
+            .filter((p) => p.llegada <= tiempoActual)
+            .sort((a, b) => a.prioridad - b.prioridad)[0];
         break;
-      
-      case 'Round Robin':
-        procesoEjecutando = procesosActivos
-          .filter(p => p.llegada <= tiempoActual)[0];
+
+      case 'Round Robin': {
+        const disponibles = procesosActivos.filter(
+            (p) => p.llegada <= tiempoActual
+        );
+
+        if (disponibles.length > 0) {
+          // Si el proceso actual ya terminó o agotó su quantum, pasar al siguiente
+          if (
+              contadorQuantum >= quantum ||
+              !disponibles[indiceActual % disponibles.length]
+          ) {
+            setIndiceActual((prev) => (prev + 1) % disponibles.length);
+            setContadorQuantum(0);
+          }
+          procesoEjecutando =
+              disponibles[indiceActual % disponibles.length] || disponibles[0];
+        }
         break;
-      
+      }
+
       default:
         procesoEjecutando = procesosActivos[0];
     }
 
-    // Actualizar estados de ejecución
-    const nuevoEstado = procesosActivos.map(p => ({
+    // --- ACTUALIZAR ESTADOS ---
+    const nuevoEstado = procesosActivos.map((p) => ({
       procesoId: p.id,
-      estado: p.id === procesoEjecutando?.id ? 'ejecutando' : 
-              (p.llegada <= tiempoActual ? 'esperando' : 'pendiente')
+      estado:
+          p.id === procesoEjecutando?.id
+              ? 'ejecutando'
+              : p.llegada <= tiempoActual
+                  ? 'esperando'
+                  : 'pendiente'
     }));
 
-    setEstadosEjecucion(prev => ({
+    setEstadosEjecucion((prev) => ({
       ...prev,
       [tiempoActual]: nuevoEstado
     }));
 
-    // Actualizar proceso ejecutando
+    // --- ACTUALIZAR PROCESO EJECUTANDO ---
     if (procesoEjecutando) {
-      const procesosActualizados = procesos.map(p => {
+      const procesosActualizados = procesos.map((p) => {
         if (p.id === procesoEjecutando.id) {
           const nuevoTiempoRestante = p.tiempoRestante - 1;
-          
+
           if (nuevoTiempoRestante === 0) {
             const procesoFinalizado = {
               ...p,
               tiempoRestante: 0,
               tiempoFinalizacion: tiempoActual + 1,
-              tiempoRetorno: (tiempoActual + 1) - p.llegada,
-              tiempoEspera: (tiempoActual + 1) - p.llegada - p.rafaga
+              tiempoRetorno: tiempoActual + 1 - p.llegada,
+              tiempoEspera: tiempoActual + 1 - p.llegada - p.rafaga
             };
-            setProcesosFinalizados(prev => [...prev, procesoFinalizado]);
+            setProcesosFinalizados((prev) => [...prev, procesoFinalizado]);
+            setContadorQuantum(0); // resetear quantum si termina
+          } else if (algoritmo === 'Round Robin') {
+            setContadorQuantum((prev) => prev + 1);
           }
-          
+
           return { ...p, tiempoRestante: nuevoTiempoRestante };
         }
         return p;
       });
-      
+
       setProcesos(procesosActualizados);
     }
 
-    setTiempoActual(prev => prev + 1);
+    setTiempoActual((prev) => prev + 1);
   };
 
   const iniciarSimulacion = () => {
@@ -126,19 +153,21 @@ function App() {
     setSimulando(true);
   };
 
-  const pausarSimulacion = () => {
-    setSimulando(false);
-  };
+  const pausarSimulacion = () => setSimulando(false);
 
   const reiniciarSimulacion = () => {
     setSimulando(false);
     setTiempoActual(0);
     setEstadosEjecucion({});
     setProcesosFinalizados([]);
-    setProcesos(procesos.map(p => ({
-      ...p,
-      tiempoRestante: p.rafaga
-    })));
+    setProcesos(
+        procesos.map((p) => ({
+          ...p,
+          tiempoRestante: p.rafaga
+        }))
+    );
+    setIndiceActual(0);
+    setContadorQuantum(0);
   };
 
   const limpiarProcesos = () => {
@@ -147,53 +176,55 @@ function App() {
     setEstadosEjecucion({});
     setProcesosFinalizados([]);
     setSimulando(false);
+    setIndiceActual(0);
+    setContadorQuantum(0);
   };
 
   return (
-    <div className="App">
-      <header>
-        <h1>Simulador de Planificación de Procesos</h1>
-      </header>
+      <div className="App">
+        <header>
+          <h1>Simulador de Planificación de Procesos</h1>
+        </header>
 
-      <div className="container">
-        <div className="panel-izquierdo">
-          <SelectorAlgoritmo 
-            algoritmo={algoritmo} 
-            setAlgoritmo={setAlgoritmo}
-            quantum={quantum}
-            setQuantum={setQuantum}
-          />
-          
-          <FormularioProceso 
-            agregarProceso={agregarProceso} 
-            algoritmo={algoritmo}
-          />
+        <div className="container">
+          <div className="panel-izquierdo">
+            <SelectorAlgoritmo
+                algoritmo={algoritmo}
+                setAlgoritmo={setAlgoritmo}
+                quantum={quantum}
+                setQuantum={setQuantum}
+            />
 
-          <ControlSimulacion
-            iniciar={iniciarSimulacion}
-            pausar={pausarSimulacion}
-            reiniciar={reiniciarSimulacion}
-            limpiar={limpiarProcesos}
-            simulando={simulando}
-          />
+            <FormularioProceso
+                agregarProceso={agregarProceso}
+                algoritmo={algoritmo}
+            />
 
-          <ColaProcesos procesos={procesos} />
-        </div>
+            <ControlSimulacion
+                iniciar={iniciarSimulacion}
+                pausar={pausarSimulacion}
+                reiniciar={reiniciarSimulacion}
+                limpiar={limpiarProcesos}
+                simulando={simulando}
+            />
 
-        <div className="panel-derecho">
-          <TablaGantt
-            procesos={procesos}
-            tiempoTotal={tiempoActual}
-            estadosEjecucion={estadosEjecucion}
-          />
+            <ColaProcesos procesos={procesos} />
+          </div>
 
-          <HistorialProcesos
-            procesos={procesosFinalizados}
-            tiempoActual={tiempoActual}
-          />
+          <div className="panel-derecho">
+            <TablaGantt
+                procesos={procesos}
+                tiempoTotal={tiempoActual}
+                estadosEjecucion={estadosEjecucion}
+            />
+
+            <HistorialProcesos
+                procesos={procesosFinalizados}
+                tiempoActual={tiempoActual}
+            />
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 

@@ -4,14 +4,22 @@ import React from "react";
 // historial → un array de objetos que contiene los procesos completados.
 const HistorialProcesos = ({ procesos, tiempoActual }) => {
     const calcularPromedios = () => {
-        if (procesos.length === 0) return { espera: 0, retorno: 0 };
+        if (procesos.length === 0) return { espera: 0, indiceServicio: 0 };
 
         const totalEspera = procesos.reduce((sum, p) => sum + p.tiempoEspera, 0);
-        const totalRetorno = procesos.reduce((sum, p) => sum + p.tiempoRetorno, 0);
+
+        // Promedio de índice de servicio = promedio de (rafaga / tiempoRetorno)
+        const indices = procesos
+            .filter(p => p.tiempoRetorno > 0)
+            .map(p => p.rafaga / p.tiempoRetorno);
+
+        const promedioIndiceServicio = indices.length > 0
+            ? indices.reduce((a, b) => a + b, 0) / indices.length
+            : 0;
 
         return {
             espera: (totalEspera / procesos.length).toFixed(2),
-            retorno: (totalRetorno / procesos.length).toFixed(2)
+            indiceServicio: promedioIndiceServicio.toFixed(2)
         };
     };
 
@@ -23,7 +31,7 @@ const HistorialProcesos = ({ procesos, tiempoActual }) => {
 
             {/* Título de la sección */}
             <h2 className="text-xl font-semibold text-gray-700 mb-4">
-                Historial de Procesos Completados
+                Resumen de Procesos Completados
             </h2>
 
             <h3 className="text-lg font-semibold text-gray-700 mb-4">
@@ -32,20 +40,20 @@ const HistorialProcesos = ({ procesos, tiempoActual }) => {
 
             <div className="estadisticas-generales grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="stat-box p-4 bg-gray-50 rounded-lg shadow">
-                    <span className="stat-label block text-sm font-medium text-gray-500">Tiempo Total:</span>
+                    <span className="stat-label block text-sm font-medium text-black-500">Tiempo Total:</span>
                     <span className="stat-value block text-xl font-bold text-gray-900">{tiempoActual}</span>
                 </div>
                 <div className="stat-box p-4 bg-gray-50 rounded-lg shadow">
-                    <span className="stat-label block text-sm font-medium text-gray-500">Procesos Finalizados:</span>
+                    <span className="stat-label block text-sm font-medium text-black-500">Procesos Finalizados:</span>
                     <span className="stat-value block text-xl font-bold text-gray-900">{procesos.length}</span>
                 </div>
                 <div className="stat-box p-4 bg-gray-50 rounded-lg shadow">
-                    <span className="stat-label block text-sm font-medium text-gray-500">Tiempo Espera Promedio:</span>
+                    <span className="stat-label block text-sm font-medium text-black-500">Tiempo Espera Promedio:</span>
                     <span className="stat-value block text-xl font-bold text-gray-900">{promedios.espera}</span>
                 </div>
                 <div className="stat-box p-4 bg-gray-50 rounded-lg shadow">
-                    <span className="stat-label block text-sm font-medium text-gray-500">Tiempo Retorno Promedio:</span>
-                    <span className="stat-value block text-xl font-bold text-gray-900">{promedios.retorno}</span>
+                    <span className="stat-label block text-sm font-medium text-black-500">Indice de Servicio Promedio:</span>
+                    <span className="stat-value block text-xl font-bold text-gray-900">{promedios.indiceServicio}</span>
                 </div>
             </div>
 
@@ -69,11 +77,12 @@ const HistorialProcesos = ({ procesos, tiempoActual }) => {
                             <thead className="bg-gray-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proceso</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Llegada</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ráfaga</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finalización</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Espera</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Retorno</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instante de Llegada</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo de CPU</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instante de Finalización</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo de Espera</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo de Retorno</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Indice de Servicio</th>
                             </tr>
                             </thead>
 
@@ -89,6 +98,9 @@ const HistorialProcesos = ({ procesos, tiempoActual }) => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.tiempoFinalizacion}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.tiempoEspera}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.tiempoRetorno}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {proceso.tiempoRetorno > 0 ? (proceso.rafaga / proceso.tiempoRetorno).toFixed(2) : '—'}
+                                    </td>
                                 </tr>
                             ))}
                             </tbody>

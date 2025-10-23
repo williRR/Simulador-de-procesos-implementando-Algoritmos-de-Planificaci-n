@@ -23,6 +23,18 @@ function App() {
   const [rrCurrentId, setRrCurrentId] = useState(null);
   const [rrSlice, setRrSlice] = useState(0);
 
+  // Persistencia de historial (restaurado a como lo tenías)
+  useEffect(() => {
+    const storedHistory = localStorage.getItem('historialSimulaciones');
+    if (storedHistory) {
+      setHistorialSimulaciones(JSON.parse(storedHistory));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('historialSimulaciones', JSON.stringify(historialSimulaciones));
+  }, [historialSimulaciones]);
+
   // Agregar proceso
   const agregarProceso = (proceso) => {
     const nuevoProceso = {
@@ -49,18 +61,27 @@ function App() {
       procesos.filter(p => !procesosFinalizados.find(pf => pf.id === p.id));
 
   // Finalizar proceso
-  const finalizarProceso = (p, tFin) => {
-    const fin = {
-      ...p,
-      tiempoRestante: 0,
-      tiempoFinalizacion: tFin,
-      tiempoRetorno: tFin - p.llegada,
-      tiempoEspera: tFin - p.llegada - p.rafaga
-    };
-    setProcesosFinalizados(prev => [...prev, fin]);
-  };
+// Finalizar proceso - CORRECCIÓN CLAVE CONTRA DUPLICADOS
+const finalizarProceso = (p, tFin) => {
+  setProcesosFinalizados(prev => {
+      // ⭐️ LÍNEA CLAVE: Verifica si el proceso ya ha sido finalizado. Si ya existe, retorna el estado anterior para evitar duplicación.
+      if (prev.find(pf => pf.id === p.id)) {
+          return prev; 
+      }
 
-  // --- EJECUCIÓN DE UN PASO DE SIMULACIÓN ---
+      const fin = {
+          ...p,
+          tiempoRestante: 0,
+          tiempoFinalizacion: tFin,
+          tiempoRetorno: tFin - p.llegada,
+          tiempoEspera: tFin - p.llegada - p.rafaga
+      };
+      // Si no existe, añade el proceso finalizado
+      return [...prev, fin]; 
+  });
+};
+
+  // --- EJECUCIÓN DE UN PASO DE SIMULACIÓN (sin cambios) ---
   const ejecutarPasoSimulacion = () => {
     const activos = procesosNoFinalizados();
     if (activos.length === 0) {
@@ -220,7 +241,7 @@ function App() {
   };
 
 
-  // --- GUARDAR SIMULACIÓN EN EL HISTORIAL ---
+  // --- GUARDAR SIMULACIÓN EN EL HISTORIAL (sin cambios) ---
   const guardarSimulacion = () => {
     if (procesosFinalizados.length === 0) return;
 
@@ -252,34 +273,52 @@ function App() {
   };
 
   // --- INICIAR, PAUSAR, REINICIAR, LIMPIAR ---
-  const iniciarSimulacion = () => {
-    if (procesos.length === 0) {
-      alert('Agrega al menos un proceso');
-      return;
-    }
+  const iniciarSimulacion = () => {
+    if (procesos.length === 0) {
+      alert('Agrega al menos un proceso');
+      return;
+    }
 
-    // Reiniciar valores
-    setTiempoActual(0);
-    setEstadosEjecucion({});
-    setProcesosFinalizados([]);
-    setRrQueue([]);
-    setRrCurrentId(null);
-    setRrSlice(0);
+    // 🔥 CORRECCIÓN MÍNIMA: Resetear el estado de los procesos principales a CERO.
+    setProcesos(prev => prev.map(p => ({ 
+        ...p, 
+        tiempoRestante: p.rafaga, // Restaurar ráfaga
+        tiempoEspera: 0,
+        tiempoRetorno: 0,
+        tiempoFinalizacion: 0
+    })));
 
-    // 🔹 Ejecutar primer paso inmediatamente
-    // ELIMINA O COMENTA ESTA LÍNEA:
-    // ejecutarPasoSimulacion(); 
-    
-    setSimulando(true);
-  };
+    // Reiniciar valores de la corrida
+    setTiempoActual(0);
+    setEstadosEjecucion({});
+    setProcesosFinalizados([]); // Limpia la tabla de resumen
+    setRrQueue([]);
+    setRrCurrentId(null);
+    setRrSlice(0);
+
+    // Línea comentada
+    // ejecutarPasoSimulacion();
+
+    setSimulando(true);
+  };
+  
   const pausarSimulacion = () => setSimulando(false);
 
   const reiniciarSimulacion = () => {
     setSimulando(false);
     setTiempoActual(0);
     setEstadosEjecucion({});
-    setProcesosFinalizados([]);
-    setProcesos(prev => prev.map(p => ({ ...p, tiempoRestante: p.rafaga })));
+    setProcesosFinalizados([]); // Limpia la tabla de resumen
+
+    // 🔥 CORRECCIÓN MÍNIMA: Resetear el estado de los procesos principales a CERO.
+    setProcesos(prev => prev.map(p => ({ 
+        ...p, 
+        tiempoRestante: p.rafaga, // Restaurar ráfaga
+        tiempoEspera: 0,
+        tiempoRetorno: 0,
+        tiempoFinalizacion: 0
+    })));
+    
     setRrQueue([]);
     setRrCurrentId(null);
     setRrSlice(0);

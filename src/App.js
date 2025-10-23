@@ -5,6 +5,7 @@ import ControlSimulacion from './components/ControlSimulacion';
 import TablaGantt from './components/TablaGantt';
 import ColaProcesos from './components/ColaProcesos';
 import HistorialProcesos from './components/HistorialProcesos';
+import HistorialCompleto from './components/HistorialCompleto';
 import './css/styles.css';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
   const [estadosEjecucion, setEstadosEjecucion] = useState({});
   const [procesosFinalizados, setProcesosFinalizados] = useState([]);
   const [quantum, setQuantum] = useState(2);
+  const [historialSimulaciones, setHistorialSimulaciones] = useState([]);
 
   // Round Robin
   const [rrQueue, setRrQueue] = useState([]);
@@ -63,6 +65,8 @@ function App() {
     const activos = procesosNoFinalizados();
     if (activos.length === 0) {
       setSimulando(false);
+      // Guardar simulación en el historial cuando termine
+      guardarSimulacion();
       return;
     }
 
@@ -216,7 +220,38 @@ function App() {
   };
 
 
-  // --- INICIAR, PAUSAR, REINICIAR, LIMPIAR ---
+  // --- GUARDAR SIMULACIÓN EN EL HISTORIAL ---
+  const guardarSimulacion = () => {
+    if (procesosFinalizados.length === 0) return;
+
+    // Calcular estadísticas
+    const totalEspera = procesosFinalizados.reduce((sum, p) => sum + p.tiempoEspera, 0);
+    const promedioEspera = (totalEspera / procesosFinalizados.length).toFixed(2);
+
+    const indices = procesosFinalizados
+      .filter(p => p.tiempoRetorno > 0)
+      .map(p => p.rafaga / p.tiempoRetorno);
+    
+    const promedioIndiceServicio = indices.length > 0
+      ? (indices.reduce((a, b) => a + b, 0) / indices.length).toFixed(2)
+      : '0.00';
+
+    const nuevaSimulacion = {
+      fecha: new Date().toISOString(),
+      algoritmo: algoritmo,
+      quantum: algoritmo === 'Round Robin' ? quantum : null,
+      tiempoTotal: tiempoActual,
+      procesos: [...procesosFinalizados],
+      estadisticas: {
+        promedioEspera,
+        promedioIndiceServicio
+      }
+    };
+
+    setHistorialSimulaciones(prev => [...prev, nuevaSimulacion]);
+  };
+
+  // --- INICIAR, PAUSAR, REINICIAR, LIMPIAR ---
   const iniciarSimulacion = () => {
     if (procesos.length === 0) {
       alert('Agrega al menos un proceso');
@@ -302,13 +337,13 @@ function App() {
             />
           </div>
         </div>
+
+        {/* Historial Completo de Simulaciones */}
+        <div className="container mt-6">
+          <HistorialCompleto historialSimulaciones={historialSimulaciones} />
+        </div>
       </div>
   );
 }
 
 export default App;
-
-
-
-
-

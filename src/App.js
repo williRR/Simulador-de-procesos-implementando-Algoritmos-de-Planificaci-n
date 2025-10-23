@@ -335,12 +335,9 @@ function App() {
                 procesos={procesosFinalizados}
                 tiempoActual={tiempoActual}
             />
+            {/* Historial Completo justo debajo del resumen de procesos completados */}
+            <HistorialCompleto historialSimulaciones={historialSimulaciones} />
           </div>
-        </div>
-
-        {/* Historial Completo de Simulaciones */}
-        <div className="container mt-6">
-          <HistorialCompleto historialSimulaciones={historialSimulaciones} />
         </div>
       </div>
   );

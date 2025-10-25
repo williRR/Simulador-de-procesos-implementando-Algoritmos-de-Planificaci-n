@@ -17,11 +17,15 @@ personalizados y observar cómo son gestionados en una cola de espera y ejecutad
 
 ### Capturas de Pantalla
 
-<img width="1350" height="616" alt="image" src="https://github.com/user-attachments/assets/9db8bb3e-8120-46d2-ad57-c28b11a9e936" />
+<img width="921" height="410" alt="image" src="https://github.com/user-attachments/assets/d4efc629-8f93-413a-a958-3c97372da8f4" />
 
-<img width="1350" height="616" alt="image" src="https://github.com/user-attachments/assets/3a314d94-62e7-4894-bd37-0fc34ccb44cf" />
 
-<img width="1350" height="616" alt="image" src="https://github.com/user-attachments/assets/20d27697-dcaf-4595-a09e-9d4610828b85" />
+
+<img width="921" height="410" alt="image" src="https://github.com/user-attachments/assets/9ca23f72-81cb-4a69-93a0-c0d6d5599bf9" />
+
+
+<img width="921" height="410" alt="image" src="https://github.com/user-attachments/assets/80e1c54c-8dc3-47d5-a690-e953140ae356" />
+
 
 
 

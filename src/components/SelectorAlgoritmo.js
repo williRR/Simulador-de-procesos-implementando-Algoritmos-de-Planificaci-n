@@ -15,7 +15,7 @@ const SelectorAlgoritmo = ({ algoritmo, setAlgoritmo, quantum, setQuantum }) => 
           <option value="FCFS">FCFS (First Come First Served)</option>
           <option value="SJF">SJF (Shortest Job First)</option>
           <option value="Round Robin">Round Robin</option>
-          <option value="Prioridad">Por Prioridad</option>
+          {/* <option value="Prioridad">Por Prioridad</option> */}
         </select>
       </div>
 

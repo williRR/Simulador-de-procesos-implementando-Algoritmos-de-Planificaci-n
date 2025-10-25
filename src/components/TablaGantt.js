@@ -23,7 +23,7 @@ const TablaGantt = ({ procesos, tiempoTotal, estadosEjecucion }) => {
 
   return (
     <div className="tabla-gantt-container">
-      <h3>Diagrama de Gantt</h3>
+      <h3>Diagrama de Procesos en ejecucion</h3>
       <div className="tabla-wrapper">
         <table className="tabla-gantt">
           <thead>

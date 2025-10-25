@@ -17,7 +17,7 @@ function App() {
   const [procesosFinalizados, setProcesosFinalizados] = useState([]);
   const [quantum, setQuantum] = useState(2);
   const [historialSimulaciones, setHistorialSimulaciones] = useState([]);
-  const tiempo = 3000;
+  const tiempo = 3000; // Tiempo de espera entre pasos en milisegundos
 
   // Round Robin
   const [rrQueue, setRrQueue] = useState([]);
@@ -71,11 +71,10 @@ function App() {
   const procesosNoFinalizados = () =>
       procesos.filter(p => !procesosFinalizados.find(pf => pf.id === p.id));
 
-  // Finalizar proceso
-// Finalizar proceso - CORRECCIÓN CLAVE CONTRA DUPLICADOS
+// Finalizar proceso 
 const finalizarProceso = (p, tFin) => {
   setProcesosFinalizados(prev => {
-      // ⭐️ LÍNEA CLAVE: Verifica si el proceso ya ha sido finalizado. Si ya existe, retorna el estado anterior para evitar duplicación.
+      //Verifica si el proceso ya ha sido finalizado. Si ya existe, retorna el estado anterior para evitar duplicación.
       if (prev.find(pf => pf.id === p.id)) {
           return prev; 
       }
@@ -92,7 +91,7 @@ const finalizarProceso = (p, tFin) => {
   });
 };
 
-  // --- EJECUCIÓN DE UN PASO DE SIMULACIÓN (sin cambios) ---
+  // --- EJECUCIÓN DE UN PASO DE SIMULACIÓN ---
   const ejecutarPasoSimulacion = () => {
     const activos = procesosNoFinalizados();
     if (activos.length === 0) {
@@ -154,7 +153,7 @@ const finalizarProceso = (p, tFin) => {
         return;
       }
 
-      // 👇 Registrar estado ANTES de avanzar el tiempo
+      //Registrar estado ANTES de avanzar el tiempo
       const nuevoEstado = activos.map(p => ({
         procesoId: p.id,
         estado:
@@ -240,7 +239,7 @@ const finalizarProceso = (p, tFin) => {
       procesoEjecutando = activos[0];
     }
 
-    // 👇 Registrar estado ANTES de avanzar tiempo
+    //Registrar estado ANTES de avanzar tiempo
     const nuevoEstado = activos.map(p => ({
       procesoId: p.id,
       estado:
@@ -276,7 +275,7 @@ const finalizarProceso = (p, tFin) => {
   };
 
 
-  // --- GUARDAR SIMULACIÓN EN EL HISTORIAL (sin cambios) ---
+  // --- GUARDAR SIMULACIÓN EN EL HISTORIAL ---
   const guardarSimulacion = () => {
     if (procesosFinalizados.length === 0) return;
 
@@ -314,7 +313,7 @@ const finalizarProceso = (p, tFin) => {
       return;
     }
 
-    // 🔥 CORRECCIÓN MÍNIMA: Resetear el estado de los procesos principales a CERO.
+    //Resetear el estado de los procesos principales a CERO.
     setProcesos(prev => prev.map(p => ({ 
         ...p, 
         tiempoRestante: p.rafaga, // Restaurar ráfaga
@@ -332,9 +331,6 @@ const finalizarProceso = (p, tFin) => {
     setRrSlice(0);
   setSjfCurrentId(null);
 
-    // Línea comentada
-    // ejecutarPasoSimulacion();
-
     setSimulando(true);
   };
   
@@ -346,7 +342,7 @@ const finalizarProceso = (p, tFin) => {
     setEstadosEjecucion({});
     setProcesosFinalizados([]); // Limpia la tabla de resumen
 
-    // 🔥 CORRECCIÓN MÍNIMA: Resetear el estado de los procesos principales a CERO.
+    //Resetear el estado de los procesos principales a CERO.
     setProcesos(prev => prev.map(p => ({ 
         ...p, 
         tiempoRestante: p.rafaga, // Restaurar ráfaga

@@ -17,6 +17,7 @@ function App() {
   const [procesosFinalizados, setProcesosFinalizados] = useState([]);
   const [quantum, setQuantum] = useState(2);
   const [historialSimulaciones, setHistorialSimulaciones] = useState([]);
+  const tiempo = 3000;
 
   // Round Robin
   const [rrQueue, setRrQueue] = useState([]);
@@ -51,7 +52,7 @@ function App() {
   // useEffect para ejecutar pasos
   useEffect(() => {
     if (!simulando || procesos.length === 0) return;
-    const intervalo = setInterval(() => ejecutarPasoSimulacion(), 500);
+    const intervalo = setInterval(() => ejecutarPasoSimulacion(), tiempo);
     return () => clearInterval(intervalo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulando, procesos, algoritmo, quantum, rrQueue, rrCurrentId, rrSlice, tiempoActual]);

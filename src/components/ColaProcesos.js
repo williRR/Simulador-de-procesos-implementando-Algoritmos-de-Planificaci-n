@@ -12,7 +12,7 @@ const ColaProcesos = ({ procesos }) => {
             <div key={proceso.id} className="proceso-item">
               <div className="proceso-header">
                 {/* Mostrar id real si existe, si no usar índice */}
-                <span className="proceso-numero">P{proceso.id !== undefined ? proceso.id : index}</span>
+                <span className="proceso-numero">{proceso.nombre && proceso.nombre.trim() !== '' ? proceso.nombre : `P${proceso.id !== undefined ? proceso.id : index}`}</span>
                 <span className="proceso-rafaga">Ráfaga: {proceso.rafaga}</span>
               </div>
               <div className="proceso-detalles">

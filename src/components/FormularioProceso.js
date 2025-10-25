@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 const FormularioProceso = ({ agregarProceso, algoritmo }) => {
   const [proceso, setProceso] = useState({
+    nombre: '',
     llegada: 0,
     rafaga: 1,
     prioridad: 1
@@ -15,10 +16,18 @@ const FormularioProceso = ({ agregarProceso, algoritmo }) => {
       return;
     }
 
-    agregarProceso(proceso);
+    // Validar nombre
+    const nombreLimpio = (proceso.nombre || '').trim();
+    if (!nombreLimpio) {
+      alert('Por favor, ingresa un nombre para el proceso');
+      return;
+    }
+
+    agregarProceso({ ...proceso, nombre: nombreLimpio });
     
     // Resetear formulario
     setProceso({
+      nombre: '',
       llegada: 0,
       rafaga: 1,
       prioridad: 1
@@ -29,7 +38,7 @@ const FormularioProceso = ({ agregarProceso, algoritmo }) => {
     const { name, value } = e.target;
     setProceso({
       ...proceso,
-      [name]: parseInt(value) || 0
+      [name]: name === 'nombre' ? value : (parseInt(value) || 0)
     });
   };
 
@@ -37,6 +46,18 @@ const FormularioProceso = ({ agregarProceso, algoritmo }) => {
     <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xl">
       <h2 className="text-xl font-semibold text-gray-700 mb-4">Añadir Nuevo Proceso</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="form-group">
+          <label>Nombre del Proceso:</label>
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Ej. P1, A, Tarea X"
+            value={proceso.nombre}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+          />
+        </div>
         <div className="form-group">
           <label>Tiempo de Llegada:</label>
           <input

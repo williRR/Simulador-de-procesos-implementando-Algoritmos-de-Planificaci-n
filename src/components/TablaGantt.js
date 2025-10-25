@@ -38,7 +38,7 @@ const TablaGantt = ({ procesos, tiempoTotal, estadosEjecucion }) => {
             {procesos.map((proceso, index) => (
               <tr key={proceso.id}>
                 {/* Mostrar id real si existe (permite ver P0), si no usar índice */}
-                <td className="proceso-nombre">P{proceso.id !== undefined ? proceso.id : index}</td>
+                <td className="proceso-nombre">{proceso.nombre && proceso.nombre.trim() !== '' ? proceso.nombre : `P${proceso.id !== undefined ? proceso.id : index}`}</td>
                 {tiempos.map(tiempo => (
                   <td
                     key={tiempo}

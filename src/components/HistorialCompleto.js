@@ -105,7 +105,7 @@ const HistorialCompleto = ({ historialSimulaciones }) => {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {simulacion.procesos.map((proceso, index) => (
                                     <tr key={index}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">P{index + 1}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{proceso.nombre && proceso.nombre.trim() !== '' ? proceso.nombre : `P${index + 1}`}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.llegada}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.rafaga}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{proceso.tiempoFinalizacion}</td>

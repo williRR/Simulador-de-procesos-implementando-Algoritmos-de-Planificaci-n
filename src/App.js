@@ -39,7 +39,7 @@ function App() {
   const agregarProceso = (proceso) => {
     const nuevoProceso = {
       ...proceso,
-      id: Date.now(),
+      id: (procesos.length + 1 ).toString(),
       tiempoRestante: proceso.rafaga,
       tiempoEspera: 0,
       tiempoRetorno: 0,

@@ -24,6 +24,9 @@ function App() {
   const [rrCurrentId, setRrCurrentId] = useState(null);
   const [rrSlice, setRrSlice] = useState(0);
 
+  // SJF no-preemptivo: mantener el proceso actual hasta que termine
+  const [sjfCurrentId, setSjfCurrentId] = useState(null);
+
   // Persistencia de historial (restaurado a como lo tenías)
   useEffect(() => {
     const storedHistory = localStorage.getItem('historialSimulaciones');
@@ -35,6 +38,13 @@ function App() {
   useEffect(() => {
     localStorage.setItem('historialSimulaciones', JSON.stringify(historialSimulaciones));
   }, [historialSimulaciones]);
+
+  // Limpiar estado de SJF si cambia el algoritmo
+  useEffect(() => {
+    if (algoritmo !== 'SJF' && sjfCurrentId !== null) {
+      setSjfCurrentId(null);
+    }
+  }, [algoritmo, sjfCurrentId]);
 
   // Agregar proceso
   const agregarProceso = (proceso) => {
@@ -55,7 +65,7 @@ function App() {
     const intervalo = setInterval(() => ejecutarPasoSimulacion(), tiempo);
     return () => clearInterval(intervalo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulando, procesos, algoritmo, quantum, rrQueue, rrCurrentId, rrSlice, tiempoActual]);
+  }, [simulando, procesos, algoritmo, quantum, rrQueue, rrCurrentId, rrSlice, tiempoActual, sjfCurrentId]);
 
   // Filtrar procesos activos
   const procesosNoFinalizados = () =>
@@ -188,26 +198,46 @@ const finalizarProceso = (p, tFin) => {
       return;
     }
 
-    // === FCFS / SJF / PRIORIDAD ===
+    // === FCFS / SJF (no-preemptivo) / PRIORIDAD ===
     let procesoEjecutando = null;
-    switch (algoritmo) {
-      case 'FCFS':
-        procesoEjecutando = activos
-            .filter(p => p.llegada <= tiempoActual)
-            .sort((a, b) => a.llegada - b.llegada)[0];
-        break;
-      case 'SJF':
-        procesoEjecutando = activos
-            .filter(p => p.llegada <= tiempoActual)
-            .sort((a, b) => a.tiempoRestante - b.tiempoRestante)[0];
-        break;
-      case 'Prioridad':
-        procesoEjecutando = activos
-            .filter(p => p.llegada <= tiempoActual)
-            .sort((a, b) => a.prioridad - b.prioridad)[0];
-        break;
-      default:
-        procesoEjecutando = activos[0];
+    if (algoritmo === 'FCFS') {
+      procesoEjecutando = activos
+        .filter(p => p.llegada <= tiempoActual)
+        .sort((a, b) => a.llegada - b.llegada)[0];
+    } else if (algoritmo === 'SJF') {
+      // SJF no-preemptivo: si hay un proceso en curso, mantenerlo hasta que termine
+      const procActual = sjfCurrentId ? procesos.find(p => p.id === sjfCurrentId) : null;
+      if (
+        procActual &&
+        procActual.tiempoRestante > 0 &&
+        procActual.llegada <= tiempoActual &&
+        !procesosFinalizados.find(pf => pf.id === procActual.id)
+      ) {
+        procesoEjecutando = procActual;
+      } else {
+        // Elegir el siguiente por ráfaga original (no por restante) entre los llegados
+        const candidato = activos
+          .filter(p => p.llegada <= tiempoActual)
+          .sort((a, b) => {
+            if (a.rafaga !== b.rafaga) return a.rafaga - b.rafaga;
+            if (a.llegada !== b.llegada) return a.llegada - b.llegada;
+            return Number(a.id) - Number(b.id);
+          })[0];
+        if (candidato) {
+          procesoEjecutando = candidato;
+          if (sjfCurrentId !== candidato.id) setSjfCurrentId(candidato.id);
+        } else {
+          // No hay procesos llegados aún; CPU ociosa
+          procesoEjecutando = null;
+          if (sjfCurrentId !== null) setSjfCurrentId(null);
+        }
+      }
+    } else if (algoritmo === 'Prioridad') {
+      procesoEjecutando = activos
+        .filter(p => p.llegada <= tiempoActual)
+        .sort((a, b) => a.prioridad - b.prioridad)[0];
+    } else {
+      procesoEjecutando = activos[0];
     }
 
     // 👇 Registrar estado ANTES de avanzar tiempo
@@ -232,6 +262,10 @@ const finalizarProceso = (p, tFin) => {
             const nuevoRestante = p.tiempoRestante - 1;
             if (nuevoRestante === 0) {
               finalizarProceso(p, tiempoActual + 1);
+              // Si es SJF, liberar el current al finalizar
+              if (algoritmo === 'SJF') {
+                setSjfCurrentId(null);
+              }
             }
             return { ...p, tiempoRestante: nuevoRestante };
           })
@@ -296,6 +330,7 @@ const finalizarProceso = (p, tFin) => {
     setRrQueue([]);
     setRrCurrentId(null);
     setRrSlice(0);
+  setSjfCurrentId(null);
 
     // Línea comentada
     // ejecutarPasoSimulacion();
@@ -323,6 +358,7 @@ const finalizarProceso = (p, tFin) => {
     setRrQueue([]);
     setRrCurrentId(null);
     setRrSlice(0);
+  setSjfCurrentId(null);
   };
 
   const limpiarProcesos = () => {
@@ -334,6 +370,7 @@ const finalizarProceso = (p, tFin) => {
     setRrQueue([]);
     setRrCurrentId(null);
     setRrSlice(0);
+    setSjfCurrentId(null);
   };
 
   // --- RENDER ---
